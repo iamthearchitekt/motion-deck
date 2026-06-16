@@ -115,7 +115,7 @@ function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDupli
       <input
         ref={fileRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,video/mp4"
         className="hidden"
         onChange={e => e.target.files?.[0] && onReplace(e.target.files[0])}
       />
