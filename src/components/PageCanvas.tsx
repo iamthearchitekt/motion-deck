@@ -367,7 +367,9 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
 
       {/* Page title */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-surface-2/80 backdrop-blur-sm border border-border-subtle px-3 py-1 rounded-full text-xs text-text-muted">
-        {page.title}
+        {!page.title || page.title.startsWith('Page ') || page.title === 'Blank Slide' || page.title.includes('(Copy)') 
+          ? `Page ${page.order + 1}` 
+          : page.title}
       </div>
     </div>
   );
