@@ -224,9 +224,9 @@ export default function PublishedDeckView() {
 
   if (!deck || !pages) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 mb-2" />
-        <p style={{ color: '#444', fontSize: 14 }}>Loading...</p>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+        <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 animate-pulse" />
+        <div className="w-5 h-5 border-2 border-[#333] border-t-accent rounded-full animate-spin"></div>
       </div>
     );
   }

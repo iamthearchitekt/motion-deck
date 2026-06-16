@@ -82,8 +82,9 @@ export default function DeckEditor() {
 
   if (!deck || !pages) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <div className="text-text-muted text-sm animate-pulse">Loading deck...</div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+        <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 animate-pulse" />
+        <div className="w-5 h-5 border-2 border-[#333] border-t-accent rounded-full animate-spin"></div>
       </div>
     );
   }
