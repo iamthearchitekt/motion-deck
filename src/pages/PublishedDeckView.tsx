@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { supabase } from '../db/supabase';
 import { useDeck, usePages } from '../db/hooks';
-import { db } from '../db/schema';
 import type { Deck, DeckPage, Overlay } from '../types';
 import { SLIDE_SIZES } from '../types';
 import PageTransitionWrapper from '../components/PageTransitionWrapper';
@@ -181,7 +181,7 @@ export default function PublishedDeckView() {
   // Resolve slug → deckId
   useEffect(() => {
     if (!slug) { setNotFound(true); return; }
-    db.decks.filter(d => d.slug === slug).first().then(deck => {
+    supabase.from('decks').select('id').eq('slug', slug).single().then(({ data: deck }) => {
       if (deck) setDeckId(deck.id);
       else setNotFound(true);
     });
