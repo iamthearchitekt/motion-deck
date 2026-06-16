@@ -46,18 +46,11 @@ function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDupli
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className={`group page-thumbnail ${isSelected ? 'selected' : ''}`}
+      className={`group page-thumbnail cursor-grab active:cursor-grabbing ${isSelected ? 'selected' : ''}`}
       onClick={onSelect}
+      {...attributes}
+      {...listeners}
     >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-1 rounded text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-        onClick={e => e.stopPropagation()}
-      >
-        <GripVertical size={12} />
-      </div>
 
       {/* Page number */}
       <div className="absolute top-1.5 right-1.5 z-10 bg-surface-0/80 text-text-muted text-[10px] px-1.5 py-0.5 rounded font-medium">
@@ -90,6 +83,7 @@ function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDupli
       <div
         className="absolute bottom-8 left-0 right-0 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity px-2"
         onClick={e => e.stopPropagation()}
+        onPointerDown={e => e.stopPropagation()}
       >
         <button
           onClick={() => fileRef.current?.click()}
