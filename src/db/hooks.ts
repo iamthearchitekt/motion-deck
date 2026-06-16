@@ -94,7 +94,7 @@ export async function archiveDeck(id: string) {
 
 export function usePages(deckId: string | undefined) {
   return useLiveQuery(
-    () => (deckId ? db.pages.where('deckId').equals(deckId).sortBy('order') : Promise.resolve([] as import('../types').DeckPage[])),
+    () => (deckId ? db.pages.where('deckId').equals(deckId).sortBy('order') : undefined as any),
     [deckId]
   );
 }
