@@ -104,7 +104,7 @@ export async function addPage(deckId: string, imageUrl: string, imageDataUrl: st
   const page: DeckPage = {
     id,
     deckId,
-    title: `Page ${existingCount + 1}`,
+    title: '',
     order: existingCount,
     imageUrl,
     imageDataUrl,
@@ -124,7 +124,7 @@ export async function addBlankPage(deckId: string, existingCount: number): Promi
   const page: DeckPage = {
     id,
     deckId,
-    title: `Blank Slide`,
+    title: '',
     order: existingCount,
     backgroundColor: '#000000',
     overlays: [],
@@ -165,7 +165,7 @@ export async function duplicatePage(page: DeckPage): Promise<string> {
     id: newId,
     order: newOrder,
     overlays: newOverlays,
-    title: `${page.title} (Copy)`,
+    title: '',
   });
   await updateDeck(page.deckId, {});
   return newId;

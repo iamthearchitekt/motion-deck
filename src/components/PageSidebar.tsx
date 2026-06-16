@@ -76,7 +76,11 @@ function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDupli
 
       {/* Title */}
       <div className="px-2 py-1.5 bg-surface-2">
-        <p className="text-[11px] text-text-secondary truncate">{page.title || `Page ${index + 1}`}</p>
+        <p className="text-[11px] text-text-secondary truncate">
+          {!page.title || page.title.startsWith('Page ') || page.title === 'Blank Slide' || page.title.includes('(Copy)') 
+            ? `Page ${index + 1}` 
+            : page.title}
+        </p>
       </div>
 
       {/* Action buttons on hover */}
