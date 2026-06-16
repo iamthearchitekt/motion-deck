@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, Globe, Link2, Save, Settings, Download, Check, ChevronDown, Upload, X } from 'lucide-react';
+import { ArrowLeft, Eye, Globe, Link2, Save, Settings, Check, ChevronDown, Upload, X } from 'lucide-react';
 import { useDeck, usePages, updateDeck, setDeckStatus, setTransition } from '../db/hooks';
 import PageSidebar from '../components/PageSidebar';
 import PageCanvas from '../components/PageCanvas';
 import OverlaySettingsPanel from '../components/OverlaySettingsPanel';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import type { TransitionStyle, TransitionSpeed, SlideSize } from '../types';
+import type { TransitionStyle, TransitionSpeed, SlideSize, DeckPage } from '../types';
 import { SLIDE_SIZES } from '../types';
 
 type SaveState = 'saved' | 'saving' | 'unsaved';
@@ -47,7 +47,7 @@ export default function DeckEditor() {
     }
   }, [pages, selectedPageId]);
 
-  const selectedPage = pages?.find(p => p.id === selectedPageId) || null;
+  const selectedPage = pages?.find((p: DeckPage) => p.id === selectedPageId) || null;
 
   // Autosave indicator - triggered by any DB change via live query
   const triggerSave = useCallback(() => {

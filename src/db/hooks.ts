@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from './schema';
-import type { Deck, DeckPage, Overlay, MediaItem, DeckStatus, TransitionStyle, TransitionSpeed, SlideSize } from '../types';
+import type { Deck, DeckPage, Overlay, MediaItem, DeckStatus, TransitionStyle, TransitionSpeed } from '../types';
 
 // ─── Deck Hooks ──────────────────────────────────────────────────────────────
 

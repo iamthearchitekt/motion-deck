@@ -1,6 +1,6 @@
-import { useRef, useCallback } from 'react';
-import { Trash2, Copy, Eye, EyeOff, ExternalLink, Upload, X } from 'lucide-react';
-import type { DeckPage, Overlay, FitMode } from '../types';
+import { useRef, useCallback, useEffect, useState } from 'react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload } from 'lucide-react';
+import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage } from '../db/hooks';
 
 interface Props {
@@ -30,7 +30,6 @@ function NumberInput({ label, value, onChange, min = 0, max = 100, step = 0.5, u
   );
 }
 
-import { useEffect, useState } from 'react';
 
 function TextInput({ label, value, onChange, placeholder, renderExtra }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; renderExtra?: (val: string) => React.ReactNode }) {
   const [local, setLocal] = useState(value);

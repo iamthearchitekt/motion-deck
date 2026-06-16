@@ -2,13 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDeck, usePages } from '../db/hooks';
 import { db } from '../db/schema';
-import type { Deck, DeckPage, Overlay, TransitionStyle, TransitionSpeed } from '../types';
+import type { Deck, DeckPage, Overlay } from '../types';
 import { SLIDE_SIZES } from '../types';
 import PageTransitionWrapper from '../components/PageTransitionWrapper';
 import PageNavigationControls from '../components/PageNavigationControls';
 import CarouselPlayer from '../components/CarouselPlayer';
 import { makePlaceholderPage } from '../data/sampleDeck';
-import { Layers } from 'lucide-react';
 
 function formatUrl(url?: string) {
   if (!url) return '#';
@@ -260,7 +259,7 @@ export default function PublishedDeckView() {
 
       {/* Deck pages */}
       <div className="flex flex-col relative z-10">
-        {pages.map((page, i) => (
+        {pages.map((page: DeckPage, i: number) => (
           <div
             key={page.id}
             ref={el => { pageRefs.current[i] = el; }}

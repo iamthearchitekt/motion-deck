@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, LayoutGrid, Archive, Layers, Copy, Trash2, ExternalLink, Edit3, Eye, Link2, MoreHorizontal } from 'lucide-react';
 import { useDecks, usePages, createDeck, deleteDeck, duplicateDeck, archiveDeck, updateDeck } from '../db/hooks';
-import { db } from '../db/schema';
 import type { Deck, DeckStatus } from '../types';
 import NewDeckModal from '../components/NewDeckModal';
 

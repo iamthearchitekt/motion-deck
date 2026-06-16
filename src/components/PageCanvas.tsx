@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Link, Image, Film, MousePointer, Type, Plus, Move } from 'lucide-react';
+import { Link, Image, Film, MousePointer, Plus, Move } from 'lucide-react';
 import type { Deck, DeckPage, Overlay, OverlayType } from '../types';
 import { SLIDE_SIZES } from '../types';
 import { addOverlay, updateOverlay } from '../db/hooks';
@@ -15,18 +15,18 @@ interface Props {
 
 const OVERLAY_ICONS: Record<OverlayType, React.ReactNode> = {
   link: <Link size={12} />,
+  image: <Image size={12} />,
   gif: <Image size={12} />,
   mp4: <Film size={12} />,
-  button: <MousePointer size={12} />,
-  text: <Type size={12} />,
+  carousel: <div className="flex -space-x-1"><Image size={12}/><Image size={12}/></div>,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
   link: '#c9a251',
+  image: '#c9a251',
   gif: '#c9a251',
   mp4: '#c9a251',
-  button: '#c9a251',
-  text: '#c9a251',
+  carousel: '#c9a251',
 };
 
 function OverlayItem({

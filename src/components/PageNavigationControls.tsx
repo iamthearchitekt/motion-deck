@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, LayoutGrid, X } from 'lucide-react';
+import { useEffect, useCallback, useRef } from 'react';
 import type { DeckPage } from '../types';
-import { makePlaceholderPage } from '../data/sampleDeck';
 
 interface Props {
   pages: DeckPage[];
@@ -10,14 +8,11 @@ interface Props {
 }
 
 export default function PageNavigationControls({ pages, currentIndex, onNavigate }: Props) {
-  const [showThumbs, setShowThumbs] = useState(false);
-  const [visible, setVisible] = useState(true);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetFade = useCallback(() => {
-    setVisible(true);
     if (fadeTimer.current) clearTimeout(fadeTimer.current);
-    fadeTimer.current = setTimeout(() => setVisible(false), 3500);
+    fadeTimer.current = setTimeout(() => {}, 3500);
   }, []);
 
   useEffect(() => {

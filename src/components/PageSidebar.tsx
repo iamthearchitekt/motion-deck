@@ -7,7 +7,7 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Upload, Plus, GripVertical, Trash2, Copy, ImageIcon, RefreshCw } from 'lucide-react';
+import { Upload, Plus, Trash2, Copy, ImageIcon, RefreshCw } from 'lucide-react';
 import type { DeckPage } from '../types';
 import { addPage, deletePage, duplicatePage, reorderPages, updatePage, addBlankPage } from '../db/hooks';
 import { makePlaceholderPage } from '../data/sampleDeck';
@@ -16,7 +16,7 @@ interface Props {
   deckId: string;
   pages: DeckPage[];
   selectedPageId: string | null;
-  onSelectPage: (id: string) => void;
+  onSelectPage: (id: string | null) => void;
 }
 
 function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDuplicate, onReplace }: {
