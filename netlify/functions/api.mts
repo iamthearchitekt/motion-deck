@@ -11,6 +11,10 @@ import type { Deck, DeckPage, MediaItem, Overlay } from '../../src/types';
 
 const ASSET_STORE = 'motion-deck-assets';
 
+// Strong consistency so a freshly uploaded image/video is readable immediately
+// (eventual consistency can 404 for up to ~60s right after an upload).
+const assetStore = () => getStore({ name: ASSET_STORE, consistency: 'strong' });
+
 const json = (data: unknown, status = 200) =>
   new Response(data === null ? '' : JSON.stringify(data), {
     status,
@@ -21,21 +25,25 @@ const nowIso = () => new Date().toISOString();
 
 // ─── Asset (Blobs) handlers ──────────────────────────────────────────────────
 
-async function putAsset(req: Request): Promise<Response> {
-  const { key, dataUrl } = (await req.json()) as { key: string; dataUrl: string };
-  const match = /^data:(.*?);base64,(.*)$/s.exec(dataUrl);
-  if (!key || !match) return json({ error: 'Invalid asset payload' }, 400);
+// Uploads arrive as the raw file body (not base64 JSON), with the key in the
+// query string and the media type in the Content-Type header. Sending decoded
+// bytes avoids the ~33% base64 inflation that pushed images and 5 MB videos
+// over the serverless request-body limit.
+async function putAsset(req: Request, url: URL): Promise<Response> {
+  const key = url.searchParams.get('key');
+  if (!key) return json({ error: 'Missing asset key' }, 400);
 
-  const contentType = match[1] || 'application/octet-stream';
-  const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+  const body = await req.arrayBuffer();
+  if (!body.byteLength) return json({ error: 'Empty asset body' }, 400);
 
-  const store = getStore(ASSET_STORE);
-  await store.set(key, bytes.buffer, { metadata: { contentType } });
+  const contentType = req.headers.get('content-type') || 'application/octet-stream';
+  const store = assetStore();
+  await store.set(key, body, { metadata: { contentType } });
   return json({ url: `/api/assets/${key}` });
 }
 
 async function getAsset(key: string): Promise<Response> {
-  const store = getStore(ASSET_STORE);
+  const store = assetStore();
   const result = await store.getWithMetadata(key, { type: 'arrayBuffer' });
   if (!result) return new Response('Not found', { status: 404 });
   return new Response(result.data, {
@@ -227,7 +235,7 @@ export default async (req: Request): Promise<Response> => {
 
   try {
     if (resource === 'assets') {
-      if (method === 'POST') return await putAsset(req);
+      if (method === 'POST') return await putAsset(req, url);
       if (method === 'GET') return await getAsset(segments.slice(1).join('/'));
       return json({ error: 'Method not allowed' }, 405);
     }

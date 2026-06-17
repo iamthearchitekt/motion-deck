@@ -21,11 +21,24 @@ async function api<T = any>(path: string, options?: RequestInit): Promise<T> {
 // URLs (already-hosted assets) are passed through unchanged.
 async function uploadAsset(deckId: string, id: string, dataUrl?: string): Promise<string | undefined> {
   if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+  return uploadDataUrl(deckId, dataUrl, id);
+}
+
+// Decode a data URL in the browser and upload the raw bytes to Blobs, returning
+// the public asset URL. Sending binary (instead of base64 wrapped in JSON)
+// removes the ~33% size inflation that was making images and 5 MB videos fail
+// the upload. Exported so every uploader — page backgrounds, media, branding,
+// carousels — stores the file once and keeps only a short URL in the database.
+export async function uploadDataUrl(deckId: string, dataUrl: string, id: string = uuidv4()): Promise<string> {
+  const blob = await (await fetch(dataUrl)).blob();
   const key = `${deckId}/${id}-${Date.now()}`;
-  const { url } = await api<{ url: string }>('/assets', {
+  const res = await fetch(`/api/assets?key=${encodeURIComponent(key)}`, {
     method: 'POST',
-    body: JSON.stringify({ key, dataUrl }),
+    headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+    body: blob,
   });
+  if (!res.ok) throw new Error(`Asset upload failed: ${res.status}`);
+  const { url } = (await res.json()) as { url: string };
   return url;
 }
 

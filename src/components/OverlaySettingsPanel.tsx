@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
-import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage } from '../db/hooks';
+import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadDataUrl } from '../db/hooks';
 
 interface Props {
   page: DeckPage;
@@ -326,8 +326,12 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                         const reader = new FileReader();
                         reader.onload = () => resolve(reader.result as string);
                         reader.readAsDataURL(f);
-                      }))).then(dataUrls => {
-                        update({ carouselImages: [...(overlay.carouselImages || []), ...dataUrls] });
+                      }))).then(async dataUrls => {
+                        // Upload each image to Blobs and store the URLs. Keeping
+                        // base64 here bloated the overlay and could exceed the
+                        // request limit when adding several photos at once.
+                        const urls = await Promise.all(dataUrls.map(d => uploadDataUrl(deckId, d)));
+                        update({ carouselImages: [...(overlay.carouselImages || []), ...urls] });
                       });
                       
                       if (carouselRef.current) carouselRef.current.value = '';
