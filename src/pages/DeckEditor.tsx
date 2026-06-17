@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Globe, Link2, Save, Settings, Check, ChevronDown, Upload, X } from 'lucide-react';
-import { useDeck, usePages, updateDeck, setDeckStatus, setTransition } from '../db/hooks';
+import { useDeck, usePages, updateDeck, setDeckStatus, setTransition, uploadDataUrl } from '../db/hooks';
 import PageSidebar from '../components/PageSidebar';
 import PageCanvas from '../components/PageCanvas';
 import OverlaySettingsPanel from '../components/OverlaySettingsPanel';
@@ -27,15 +27,14 @@ export default function DeckEditor() {
   const handleBrandingUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !deckId) return;
+    const objectUrl = URL.createObjectURL(file);
+    // Show the local preview immediately, then upload to Blobs and persist the
+    // resulting URL (rather than the base64, which bloated the deck record).
+    updateDeck(deckId, { brandingImageUrl: objectUrl, showPaddingBranding: true });
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const objectUrl = URL.createObjectURL(file);
-      updateDeck(deckId, {
-        brandingImageDataUrl: dataUrl,
-        brandingImageUrl: objectUrl,
-        showPaddingBranding: true,
-      });
+    reader.onload = async () => {
+      const url = await uploadDataUrl(deckId, reader.result as string);
+      updateDeck(deckId, { brandingImageDataUrl: url, brandingImageUrl: url });
     };
     reader.readAsDataURL(file);
   };

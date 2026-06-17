@@ -1,16 +1,64 @@
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from './supabase';
 import type { Deck, DeckPage, Overlay, MediaItem, DeckStatus, TransitionStyle, TransitionSpeed } from '../types';
 
-// ─── Query Helper ────────────────────────────────────────────────────────────
+// ─── API client ──────────────────────────────────────────────────────────────
+// Data lives in Netlify Database (Postgres) and Netlify Blobs, reached through
+// the `/api/*` serverless function. These helpers replace the previous direct
+// browser-to-database client.
 
-function useSupabaseQuery<T>(
-  queryFn: () => Promise<{ data: T[] | null; error: any }>,
-  deps: any[],
-  table: string,
-  skip = false
-) {
+async function api<T = any>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
+}
+
+// Upload a base64 data URL to Blobs and return its public asset URL. Non-data
+// URLs (already-hosted assets) are passed through unchanged.
+async function uploadAsset(deckId: string, id: string, dataUrl?: string): Promise<string | undefined> {
+  if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+  return uploadDataUrl(deckId, dataUrl, id);
+}
+
+// Decode a data URL in the browser and upload the raw bytes to Blobs, returning
+// the public asset URL. Sending binary (instead of base64 wrapped in JSON)
+// removes the ~33% size inflation that was making images and 5 MB videos fail
+// the upload. Exported so every uploader — page backgrounds, media, branding,
+// carousels — stores the file once and keeps only a short URL in the database.
+export async function uploadDataUrl(deckId: string, dataUrl: string, id: string = uuidv4()): Promise<string> {
+  const blob = await (await fetch(dataUrl)).blob();
+  const key = `${deckId}/${id}-${Date.now()}`;
+  const res = await fetch(`/api/assets?key=${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+    body: blob,
+  });
+  if (!res.ok) throw new Error(`Asset upload failed: ${res.status}`);
+  const { url } = (await res.json()) as { url: string };
+  return url;
+}
+
+// ─── Lightweight refetch bus ─────────────────────────────────────────────────
+// Replaces realtime subscriptions: after a mutation we notify all live queries
+// for the affected table(s) so the UI refreshes.
+
+type Listener = () => void;
+const listeners: Record<string, Set<Listener>> = {};
+
+function subscribe(table: string, fn: Listener): () => void {
+  (listeners[table] ||= new Set()).add(fn);
+  return () => listeners[table]?.delete(fn);
+}
+
+function notify(...tables: string[]) {
+  for (const table of tables) listeners[table]?.forEach((fn) => fn());
+}
+
+function useQuery<T>(fetchFn: () => Promise<T[]>, deps: any[], table: string, skip = false): T[] | undefined {
   const [data, setData] = useState<T[] | undefined>(undefined);
 
   useEffect(() => {
@@ -18,21 +66,16 @@ function useSupabaseQuery<T>(
       setData(undefined);
       return;
     }
-    
     let mounted = true;
-    const fetchData = async () => {
-      const res = await queryFn();
-      if (mounted) setData(res.data || []);
-    };
-    fetchData();
-
-    const channel = supabase.channel(`public:${table}-${deps.join('-')}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchData())
-      .subscribe();
-
+    const run = () =>
+      fetchFn()
+        .then((d) => mounted && setData(d || []))
+        .catch(() => mounted && setData([]));
+    run();
+    const unsub = subscribe(table, run);
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      unsub();
     };
   }, deps); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -42,11 +85,7 @@ function useSupabaseQuery<T>(
 // ─── Deck Hooks ──────────────────────────────────────────────────────────────
 
 export function useDecks() {
-  return useSupabaseQuery<Deck>(
-    () => supabase.from('decks').select('*').order('updatedAt', { ascending: false }) as any,
-    [],
-    'decks'
-  );
+  return useQuery<Deck>(() => api('/decks'), [], 'decks');
 }
 
 export function useDeck(id: string | undefined) {
@@ -58,19 +97,15 @@ export function useDeck(id: string | undefined) {
       return;
     }
     let mounted = true;
-    const fetchDeck = async () => {
-      const { data } = await supabase.from('decks').select('*').eq('id', id).single();
-      if (mounted) setDeck(data as Deck);
-    };
-    fetchDeck();
-
-    const channel = supabase.channel(`public:decks-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `id=eq.${id}` }, () => fetchDeck())
-      .subscribe();
-
+    const run = () =>
+      api<Deck | null>(`/decks/${id}`)
+        .then((d) => mounted && setDeck(d || undefined))
+        .catch(() => {});
+    run();
+    const unsub = subscribe('decks', run);
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      unsub();
     };
   }, [id]);
 
@@ -97,56 +132,25 @@ export async function createDeck(partial: Partial<Deck> = {}): Promise<string> {
     slideSize: '16:9',
     ...partial,
   };
-  await supabase.from('decks').insert(deck);
+  await api('/decks', { method: 'POST', body: JSON.stringify(deck) });
+  notify('decks');
   return id;
 }
 
 export async function updateDeck(id: string, changes: Partial<Deck>) {
-  await supabase.from('decks').update({ ...changes, updatedAt: new Date().toISOString() }).eq('id', id);
+  await api(`/decks/${id}`, { method: 'PATCH', body: JSON.stringify(changes) });
+  notify('decks');
 }
 
 export async function deleteDeck(id: string) {
-  await supabase.from('decks').delete().eq('id', id);
+  await api(`/decks/${id}`, { method: 'DELETE' });
+  notify('decks', 'pages', 'media');
 }
 
 export async function duplicateDeck(id: string): Promise<string> {
-  const { data: deck } = await supabase.from('decks').select('*').eq('id', id).single();
-  if (!deck) throw new Error('Deck not found');
-
-  const newDeckId = uuidv4();
-  const now = new Date().toISOString();
-  await supabase.from('decks').insert({
-    ...deck,
-    id: newDeckId,
-    title: `${deck.title} (Copy)`,
-    status: 'draft',
-    slug: newDeckId,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const { data: pages } = await supabase.from('pages').select('*').eq('deckId', id).order('order');
-  if (pages) {
-    for (const page of pages) {
-      const newPageId = uuidv4();
-      const newOverlays = (page.overlays || []).map((o: any) => ({ ...o, id: uuidv4(), pageId: newPageId }));
-      await supabase.from('pages').insert({
-        ...page,
-        id: newPageId,
-        deckId: newDeckId,
-        overlays: newOverlays,
-      });
-    }
-  }
-
-  const { data: media } = await supabase.from('media').select('*').eq('deckId', id);
-  if (media) {
-    for (const m of media) {
-      await supabase.from('media').insert({ ...m, id: uuidv4(), deckId: newDeckId });
-    }
-  }
-
-  return newDeckId;
+  const { id: newId } = await api<{ id: string }>(`/decks/${id}/duplicate`, { method: 'POST' });
+  notify('decks', 'pages', 'media');
+  return newId;
 }
 
 export async function archiveDeck(id: string) {
@@ -156,40 +160,14 @@ export async function archiveDeck(id: string) {
 // ─── Page Hooks ──────────────────────────────────────────────────────────────
 
 export function usePages(deckId: string | undefined) {
-  return useSupabaseQuery<DeckPage>(
-    () => supabase.from('pages').select('*').eq('deckId', deckId).order('order') as any,
-    [deckId],
-    'pages',
-    !deckId
-  );
-}
-
-// Helper to handle base64 to File conversion
-function dataUrlToFile(dataUrl: string, filename: string): File {
-  const arr = dataUrl.split(',');
-  const mime = arr[0].match(/:(.*?);/)![1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new File([u8arr], filename, { type: mime });
+  return useQuery<DeckPage>(() => api(`/pages?deckId=${deckId}`), [deckId], 'pages', !deckId);
 }
 
 export async function addPage(deckId: string, imageUrl: string, imageDataUrl: string, width: number, height: number, existingCount: number, backgroundType: 'image' | 'video' = 'image'): Promise<string> {
   const id = uuidv4();
-  
-  let finalImageUrl = imageUrl;
-  
-  // If it's a base64 string from the browser file picker, upload it to Supabase Storage!
-  if (imageDataUrl && imageDataUrl.startsWith('data:')) {
-    const file = dataUrlToFile(imageDataUrl, `page-${id}`);
-    const filePath = `${deckId}/${id}-${Date.now()}`;
-    const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
-    if (!error) {
-      const { data } = supabase.storage.from('motion-deck-assets').getPublicUrl(filePath);
-      finalImageUrl = data.publicUrl;
-    }
-  }
+
+  // Upload base64 from the browser file picker to Blobs and keep the public URL.
+  const finalImageUrl = (await uploadAsset(deckId, id, imageDataUrl)) || imageUrl;
 
   const page: DeckPage = {
     id,
@@ -197,15 +175,16 @@ export async function addPage(deckId: string, imageUrl: string, imageDataUrl: st
     title: '',
     order: existingCount,
     imageUrl: finalImageUrl,
-    imageDataUrl: finalImageUrl, // Clear out base64, use public URL
+    imageDataUrl: finalImageUrl,
     imageWidth: width,
     imageHeight: height,
     aspectRatio: width / height,
     backgroundType,
     overlays: [],
   };
-  await supabase.from('pages').insert(page);
+  await api('/pages', { method: 'POST', body: JSON.stringify(page) });
   await updateDeck(deckId, {});
+  notify('pages');
   return id;
 }
 
@@ -219,136 +198,130 @@ export async function addBlankPage(deckId: string, existingCount: number): Promi
     backgroundColor: '#000000',
     overlays: [],
   };
-  await supabase.from('pages').insert(page);
+  await api('/pages', { method: 'POST', body: JSON.stringify(page) });
   await updateDeck(deckId, {});
+  notify('pages');
   return id;
 }
 
 export async function updatePage(id: string, changes: Partial<DeckPage>) {
-  await supabase.from('pages').update(changes).eq('id', id);
+  await api(`/pages/${id}`, { method: 'PATCH', body: JSON.stringify(changes) });
+  notify('pages');
 }
 
 export async function deletePage(id: string, deckId: string) {
-  await supabase.from('pages').delete().eq('id', id);
+  await api(`/pages/${id}`, { method: 'DELETE' });
   // Re-index orders
-  const { data: remaining } = await supabase.from('pages').select('*').eq('deckId', deckId).order('order');
-  if (remaining) {
-    for (let i = 0; i < remaining.length; i++) {
-      await supabase.from('pages').update({ order: i }).eq('id', remaining[i].id);
+  const remaining = await api<DeckPage[]>(`/pages?deckId=${deckId}`);
+  for (let i = 0; i < remaining.length; i++) {
+    if (remaining[i].order !== i) {
+      await api(`/pages/${remaining[i].id}`, { method: 'PATCH', body: JSON.stringify({ order: i }) });
     }
   }
   await updateDeck(deckId, {});
+  notify('pages');
 }
 
 export async function duplicatePage(page: DeckPage): Promise<string> {
   const newId = uuidv4();
-  const { data: siblings } = await supabase.from('pages').select('*').eq('deckId', page.deckId).order('order');
+  const siblings = await api<DeckPage[]>(`/pages?deckId=${page.deckId}`);
   const newOrder = page.order + 1;
-  
-  if (siblings) {
-    for (const p of siblings) {
-      if (p.order >= newOrder) {
-        await supabase.from('pages').update({ order: p.order + 1 }).eq('id', p.id);
-      }
+
+  for (const p of siblings) {
+    if (p.order >= newOrder) {
+      await api(`/pages/${p.id}`, { method: 'PATCH', body: JSON.stringify({ order: p.order + 1 }) });
     }
   }
-  
-  const newOverlays = (page.overlays || []).map(o => ({ ...o, id: uuidv4(), pageId: newId }));
-  await supabase.from('pages').insert({
+
+  const newOverlays = (page.overlays || []).map((o) => ({ ...o, id: uuidv4(), pageId: newId }));
+  const newPage: DeckPage = {
     ...page,
     id: newId,
     order: newOrder,
     overlays: newOverlays,
     title: '',
-  });
+  };
+  await api('/pages', { method: 'POST', body: JSON.stringify(newPage) });
   await updateDeck(page.deckId, {});
+  notify('pages');
   return newId;
 }
 
 export async function reorderPages(deckId: string, orderedIds: string[]) {
   for (let i = 0; i < orderedIds.length; i++) {
-    await supabase.from('pages').update({ order: i }).eq('id', orderedIds[i]);
+    await api(`/pages/${orderedIds[i]}`, { method: 'PATCH', body: JSON.stringify({ order: i }) });
   }
   await updateDeck(deckId, {});
+  notify('pages');
 }
 
 // ─── Overlay Helpers ─────────────────────────────────────────────────────────
 
 export async function addOverlay(pageId: string, overlay: Omit<Overlay, 'id' | 'pageId'>): Promise<string> {
-  const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
+  const page = await api<DeckPage | null>(`/pages/${pageId}`);
   if (!page) throw new Error('Page not found');
   const id = uuidv4();
   const newOverlay: Overlay = { ...overlay, id, pageId } as Overlay;
-  await supabase.from('pages').update({ overlays: [...(page.overlays || []), newOverlay] }).eq('id', pageId);
+  await api(`/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ overlays: [...(page.overlays || []), newOverlay] }) });
   await updateDeck(page.deckId, {});
+  notify('pages');
   return id;
 }
 
 export async function updateOverlay(pageId: string, overlayId: string, changes: Partial<Overlay>) {
-  const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
+  const page = await api<DeckPage | null>(`/pages/${pageId}`);
   if (!page) return;
-  const overlays = (page.overlays || []).map((o: Overlay) => (o.id === overlayId ? { ...o, ...changes } : o));
-  await supabase.from('pages').update({ overlays }).eq('id', pageId);
+  const overlays = (page.overlays || []).map((o) => (o.id === overlayId ? { ...o, ...changes } : o));
+  await api(`/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ overlays }) });
   await updateDeck(page.deckId, {});
+  notify('pages');
 }
 
 export async function deleteOverlay(pageId: string, overlayId: string) {
-  const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
+  const page = await api<DeckPage | null>(`/pages/${pageId}`);
   if (!page) return;
-  const overlays = (page.overlays || []).filter((o: Overlay) => o.id !== overlayId);
-  await supabase.from('pages').update({ overlays }).eq('id', pageId);
+  const overlays = (page.overlays || []).filter((o) => o.id !== overlayId);
+  await api(`/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ overlays }) });
   await updateDeck(page.deckId, {});
+  notify('pages');
 }
 
 export async function duplicateOverlay(pageId: string, overlayId: string) {
-  const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
+  const page = await api<DeckPage | null>(`/pages/${pageId}`);
   if (!page) return;
-  const orig = (page.overlays || []).find((o: Overlay) => o.id === overlayId);
+  const orig = (page.overlays || []).find((o) => o.id === overlayId);
   if (!orig) return;
   const newOverlay: Overlay = { ...orig, id: uuidv4(), x: orig.x + 2, y: orig.y + 2 };
-  await supabase.from('pages').update({ overlays: [...(page.overlays || []), newOverlay] }).eq('id', pageId);
+  await api(`/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ overlays: [...(page.overlays || []), newOverlay] }) });
   await updateDeck(page.deckId, {});
+  notify('pages');
 }
 
 // ─── Media Hooks ─────────────────────────────────────────────────────────────
 
 export function useMedia(deckId: string | undefined) {
-  return useSupabaseQuery<MediaItem>(
-    () => supabase.from('media').select('*').eq('deckId', deckId) as any,
-    [deckId],
-    'media',
-    !deckId
-  );
+  return useQuery<MediaItem>(() => api(`/media?deckId=${deckId}`), [deckId], 'media', !deckId);
 }
 
 export async function addMedia(item: Omit<MediaItem, 'id' | 'uploadedAt'>): Promise<string> {
   const id = uuidv4();
-  
-  let finalUrl = item.url;
-  
-  if (item.dataUrl && item.dataUrl.startsWith('data:')) {
-    const file = dataUrlToFile(item.dataUrl, `media-${id}`);
-    const filePath = `${item.deckId}/${id}-${Date.now()}`;
-    const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
-    if (!error) {
-      const { data } = supabase.storage.from('motion-deck-assets').getPublicUrl(filePath);
-      finalUrl = data.publicUrl;
-    }
-  }
+  const finalUrl = (await uploadAsset(item.deckId, id, item.dataUrl)) || item.url;
 
-  const media: MediaItem = { 
-    ...item, 
-    id, 
+  const media: MediaItem = {
+    ...item,
+    id,
     url: finalUrl,
     dataUrl: finalUrl,
-    uploadedAt: new Date().toISOString() 
+    uploadedAt: new Date().toISOString(),
   };
-  await supabase.from('media').insert(media);
+  await api('/media', { method: 'POST', body: JSON.stringify(media) });
+  notify('media');
   return id;
 }
 
 export async function deleteMedia(id: string) {
-  await supabase.from('media').delete().eq('id', id);
+  await api(`/media/${id}`, { method: 'DELETE' });
+  notify('media');
 }
 
 // ─── Status helpers ──────────────────────────────────────────────────────────

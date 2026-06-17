@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['dexie', 'dexie-react-hooks', 'react-rnd', 'framer-motion'],
+    include: ['react-rnd', 'framer-motion'],
   },
   define: {
     'process.env': {}
