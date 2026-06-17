@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../db/supabase';
 import { useDeck, usePages } from '../db/hooks';
 import type { Deck, DeckPage, Overlay } from '../types';
 import { SLIDE_SIZES } from '../types';
@@ -181,10 +180,13 @@ export default function PublishedDeckView() {
   // Resolve slug → deckId
   useEffect(() => {
     if (!slug) { setNotFound(true); return; }
-    supabase.from('decks').select('id').eq('slug', slug).single().then(({ data: deck }) => {
-      if (deck) setDeckId(deck.id);
-      else setNotFound(true);
-    });
+    fetch(`/api/decks/by-slug/${slug}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((deck) => {
+        if (deck?.id) setDeckId(deck.id);
+        else setNotFound(true);
+      })
+      .catch(() => setNotFound(true));
   }, [slug]);
 
   const deck = useDeck(deckId || undefined);
