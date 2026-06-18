@@ -40,7 +40,9 @@ function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, o
   const [title, setTitle] = useState(deck.title);
   const navigate = useNavigate();
   const pages = usePages(deck.id);
-  const coverImage = pages?.[0]?.imageDataUrl || pages?.[0]?.imageUrl;
+  const firstPage = pages?.[0];
+  const coverImage = firstPage?.imageDataUrl || firstPage?.imageUrl;
+  const isVideo = firstPage?.backgroundType === 'video';
 
   const saveTitle = () => {
     if (title.trim()) updateDeck(deck.id, { title: title.trim() });
@@ -56,7 +58,11 @@ function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, o
         onClick={onOpen}
       >
         {coverImage ? (
-          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+          isVideo ? (
+            <video src={coverImage} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+          ) : (
+            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+          )
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #141414 100%)' }}>
             <Layers size={28} className="text-accent opacity-40" />
