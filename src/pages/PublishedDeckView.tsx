@@ -241,7 +241,7 @@ export default function PublishedDeckView() {
   const aspectRatio = deck ? SLIDE_SIZES[deck.slideSize || '16:9'].aspectRatio : 16 / 9;
 
   return (
-    <div className="min-h-screen bg-black relative">
+    <div className="min-h-screen bg-surface-3 relative">
       {/* Global Fixed Background Branding */}
       {isVertical && deck?.showPaddingBranding && brandingImageUrl && (
         <div className="fixed inset-0 flex pointer-events-none z-0">
