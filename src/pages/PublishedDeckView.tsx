@@ -132,21 +132,19 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
 
   return (
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
-      <div className="w-full h-[100dvh] flex items-center justify-center bg-transparent relative overflow-hidden">
-
-
+      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden">
         <div
           className={`relative bg-black z-10 ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
             width: '100%',
-            maxWidth: isVertical ? `calc(100dvh * ${aspectRatio})` : '100vw',
-            maxHeight: isVertical ? '100dvh' : undefined,
+            maxWidth: `calc(100dvh * ${aspectRatio})`,
+            aspectRatio: `${aspectRatio}`,
           }}
         >
           <div
             ref={imgRef}
-            className="relative w-full"
-            style={{ paddingBottom: `${(1 / aspectRatio) * 100}%`, backgroundColor: page.backgroundColor || undefined }}
+            className="relative w-full h-full"
+            style={{ backgroundColor: page.backgroundColor || undefined }}
           >
             <div className="absolute inset-0">
               {placeholderSrc && (
