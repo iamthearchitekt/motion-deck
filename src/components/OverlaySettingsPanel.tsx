@@ -79,6 +79,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const overlay = overlayId ? (page.overlays || []).find(o => o.id === overlayId) : null;
   const mediaRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const update = useCallback((changes: Partial<Overlay>) => {
     if (!overlayId) return;
@@ -96,18 +97,23 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   };
 
   const handleMediaUpload = async (file: File) => {
-    const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : 'mp4';
-    const publicUrl = await uploadFile(file, deckId);
-    const mediaId = await addMedia({
-      deckId,
-      name: file.name,
-      type,
-      url: publicUrl,
-      sizeBytes: file.size,
-    });
-    update({ mediaUrl: publicUrl, mediaId });
-    if (file.size > 50 * 1024 * 1024) {
-      alert('⚠️ This file is over 50MB. For best web playback, use H.264 MP4 compressed for web.');
+    setIsUploading(true);
+    try {
+      const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : 'mp4';
+      const publicUrl = await uploadFile(file, deckId);
+      const mediaId = await addMedia({
+        deckId,
+        name: file.name,
+        type,
+        url: publicUrl,
+        sizeBytes: file.size,
+      });
+      update({ mediaUrl: publicUrl, mediaId });
+      if (file.size > 50 * 1024 * 1024) {
+        alert('⚠️ This file is over 50MB. For best web playback, use H.264 MP4 compressed for web.');
+      }
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -261,10 +267,11 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             ) : (
               <button
                 onClick={() => mediaRef.current?.click()}
-                className="w-full border border-dashed border-border-default rounded-lg py-4 flex flex-col items-center gap-2 text-text-muted hover:border-accent hover:text-accent transition-all"
+                disabled={isUploading}
+                className={`w-full border border-dashed rounded-lg py-4 flex flex-col items-center gap-2 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
               >
                 <Upload size={16} />
-                <span className="text-xs">Upload {overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : 'MP4'}</span>
+                <span className="text-xs">{isUploading ? 'Uploading...' : `Upload ${overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : 'MP4'}`}</span>
               </button>
             )}
             <p className="text-[10px] text-text-muted mt-2">Drag corners on canvas to scale. Maintains natural aspect ratio.</p>
