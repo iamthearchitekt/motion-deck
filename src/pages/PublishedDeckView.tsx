@@ -246,11 +246,11 @@ export default function PublishedDeckView() {
       {isVertical && deck?.showPaddingBranding && brandingImageUrl && (
         <div className="fixed inset-0 flex pointer-events-none z-0">
           <div className="flex-1 relative">
-            <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15" />
+            <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
           </div>
           <div className="flex-none" style={{ width: `calc(100dvh * ${aspectRatio})`, maxWidth: '100vw' }} />
           <div className="flex-1 relative">
-            <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15" />
+            <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
           </div>
         </div>
       )}
