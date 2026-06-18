@@ -5,7 +5,7 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children }: Props) {
-  const isAuthed = localStorage.getItem('motionDeckAuth') === 'true';
+  const isAuthed = sessionStorage.getItem('motionDeckAuth') === 'true';
 
   if (!isAuthed) {
     return <Login />;

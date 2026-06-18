@@ -8,7 +8,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'Dubstep69') {
-      localStorage.setItem('motionDeckAuth', 'true');
+      sessionStorage.setItem('motionDeckAuth', 'true');
       window.location.reload();
     } else {
       setError(true);
