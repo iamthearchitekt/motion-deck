@@ -164,40 +164,26 @@ export function usePages(deckId: string | undefined) {
   );
 }
 
-// Helper to handle base64 to File conversion
-function dataUrlToFile(dataUrl: string, filename: string): File {
-  const arr = dataUrl.split(',');
-  const mime = arr[0].match(/:(.*?);/)![1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new File([u8arr], filename, { type: mime });
+export async function uploadFile(file: File, pathPrefix: string): Promise<string> {
+  const filePath = `${pathPrefix}/${uuidv4()}-${Date.now()}`;
+  const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
+  if (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+  const { data } = supabase.storage.from('motion-deck-assets').getPublicUrl(filePath);
+  return data.publicUrl;
 }
 
-export async function addPage(deckId: string, imageUrl: string, imageDataUrl: string, width: number, height: number, existingCount: number, backgroundType: 'image' | 'video' = 'image'): Promise<string> {
+export async function addPage(deckId: string, imageUrl: string, width: number, height: number, existingCount: number, backgroundType: 'image' | 'video' = 'image'): Promise<string> {
   const id = uuidv4();
-  
-  let finalImageUrl = imageUrl;
-  
-  // If it's a base64 string from the browser file picker, upload it to Supabase Storage!
-  if (imageDataUrl && imageDataUrl.startsWith('data:')) {
-    const file = dataUrlToFile(imageDataUrl, `page-${id}`);
-    const filePath = `${deckId}/${id}-${Date.now()}`;
-    const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
-    if (!error) {
-      const { data } = supabase.storage.from('motion-deck-assets').getPublicUrl(filePath);
-      finalImageUrl = data.publicUrl;
-    }
-  }
-
   const page: DeckPage = {
     id,
     deckId,
     title: '',
     order: existingCount,
-    imageUrl: finalImageUrl,
-    imageDataUrl: finalImageUrl, // Clear out base64, use public URL
+    imageUrl: imageUrl,
+    imageDataUrl: imageUrl,
     imageWidth: width,
     imageHeight: height,
     aspectRatio: width / height,
@@ -323,24 +309,10 @@ export function useMedia(deckId: string | undefined) {
 
 export async function addMedia(item: Omit<MediaItem, 'id' | 'uploadedAt'>): Promise<string> {
   const id = uuidv4();
-  
-  let finalUrl = item.url;
-  
-  if (item.dataUrl && item.dataUrl.startsWith('data:')) {
-    const file = dataUrlToFile(item.dataUrl, `media-${id}`);
-    const filePath = `${item.deckId}/${id}-${Date.now()}`;
-    const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
-    if (!error) {
-      const { data } = supabase.storage.from('motion-deck-assets').getPublicUrl(filePath);
-      finalUrl = data.publicUrl;
-    }
-  }
-
   const media: MediaItem = { 
     ...item, 
     id, 
-    url: finalUrl,
-    dataUrl: finalUrl,
+    dataUrl: item.url, // No more base64
     uploadedAt: new Date().toISOString() 
   };
   await supabase.from('media').insert(media);

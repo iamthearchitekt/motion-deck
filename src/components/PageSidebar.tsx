@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Upload, Plus, Trash2, Copy, ImageIcon, RefreshCw } from 'lucide-react';
 import type { DeckPage } from '../types';
-import { addPage, deletePage, duplicatePage, reorderPages, updatePage, addBlankPage } from '../db/hooks';
+import { addBlankPage, addPage, deletePage, duplicatePage, reorderPages, updatePage, uploadFile } from '../db/hooks';
 import { makePlaceholderPage } from '../data/sampleDeck';
 
 interface Props {
@@ -123,14 +123,7 @@ function SortablePageItem({ page, index, isSelected, onSelect, onDelete, onDupli
   );
 }
 
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+
 
 function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
   return new Promise(resolve => {
@@ -161,10 +154,10 @@ export default function PageSidebar({ deckId, pages, selectedPageId, onSelectPag
   const handleUpload = useCallback(async (files: FileList) => {
     for (const file of Array.from(files)) {
       const isVideo = file.type.startsWith('video/');
-      const dataUrl = await readFileAsDataURL(file);
-      const { width, height } = isVideo ? await getVideoDimensions(dataUrl) : await getImageDimensions(dataUrl);
       const objectUrl = URL.createObjectURL(file);
-      const id = await addPage(deckId, objectUrl, dataUrl, width, height, pages.length, isVideo ? 'video' : 'image');
+      const { width, height } = isVideo ? await getVideoDimensions(objectUrl) : await getImageDimensions(objectUrl);
+      const publicUrl = await uploadFile(file, deckId);
+      const id = await addPage(deckId, publicUrl, width, height, pages.length, isVideo ? 'video' : 'image');
       onSelectPage(id);
     }
   }, [deckId, pages.length, onSelectPage]);
@@ -190,12 +183,12 @@ export default function PageSidebar({ deckId, pages, selectedPageId, onSelectPag
 
   const handleReplace = async (page: DeckPage, file: File) => {
     const isVideo = file.type.startsWith('video/');
-    const dataUrl = await readFileAsDataURL(file);
-    const { width, height } = isVideo ? await getVideoDimensions(dataUrl) : await getImageDimensions(dataUrl);
     const objectUrl = URL.createObjectURL(file);
+    const { width, height } = isVideo ? await getVideoDimensions(objectUrl) : await getImageDimensions(objectUrl);
+    const publicUrl = await uploadFile(file, deckId);
     await updatePage(page.id, {
-      imageUrl: objectUrl,
-      imageDataUrl: dataUrl,
+      imageUrl: publicUrl,
+      imageDataUrl: publicUrl,
       imageWidth: width,
       imageHeight: height,
       aspectRatio: width / height,

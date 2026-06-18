@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
-import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage } from '../db/hooks';
+import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
 interface Props {
   page: DeckPage;
@@ -66,14 +66,6 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 function formatUrl(url?: string) {
   if (!url) return '#';
@@ -104,18 +96,16 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   };
 
   const handleMediaUpload = async (file: File) => {
-    const dataUrl = await readFileAsDataURL(file);
-    const objectUrl = URL.createObjectURL(file);
     const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : 'mp4';
+    const publicUrl = await uploadFile(file, deckId);
     const mediaId = await addMedia({
       deckId,
       name: file.name,
       type,
-      url: objectUrl,
-      dataUrl,
+      url: publicUrl,
       sizeBytes: file.size,
     });
-    update({ mediaUrl: objectUrl, mediaId });
+    update({ mediaUrl: publicUrl, mediaId });
     if (file.size > 50 * 1024 * 1024) {
       alert('⚠️ This file is over 50MB. For best web playback, use H.264 MP4 compressed for web.');
     }
@@ -322,12 +312,8 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                       const currentCount = (overlay.carouselImages || []).length;
                       const allowedFiles = files.slice(0, 10 - currentCount);
                       
-                      Promise.all(allowedFiles.map(f => new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result as string);
-                        reader.readAsDataURL(f);
-                      }))).then(dataUrls => {
-                        update({ carouselImages: [...(overlay.carouselImages || []), ...dataUrls] });
+                      Promise.all(allowedFiles.map(f => uploadFile(f, deckId))).then(publicUrls => {
+                        update({ carouselImages: [...(overlay.carouselImages || []), ...publicUrls] });
                       });
                       
                       if (carouselRef.current) carouselRef.current.value = '';
