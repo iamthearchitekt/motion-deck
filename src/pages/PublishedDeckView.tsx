@@ -32,7 +32,7 @@ function PublishedOverlay({ overlay }: {
     height: `${overlay.height}%`,
     opacity: overlay.opacity,
     borderRadius: `${overlay.borderRadius}px`,
-    overflow: 'hidden',
+    overflow: overlay.type === 'flip' ? 'visible' : 'hidden',
   };
 
   const content = () => {
@@ -49,11 +49,11 @@ function PublishedOverlay({ overlay }: {
               style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
             >
               {/* Front Side */}
-              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden' }}>
+              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', borderRadius: `${overlay.borderRadius || 0}px`, overflow: 'hidden' }}>
                 {overlay.flipFrontUrl && <img src={overlay.flipFrontUrl} alt="Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} />}
               </div>
               {/* Back Side */}
-              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', borderRadius: `${overlay.borderRadius || 0}px`, overflow: 'hidden' }}>
                 {overlay.flipBackUrl && <img src={overlay.flipBackUrl} alt="Back" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} />}
               </div>
             </div>

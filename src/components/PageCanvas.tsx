@@ -112,7 +112,7 @@ function OverlayItem({
       }
       case 'flip':
         return overlay.flipFrontUrl ? (
-          <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} draggable={false} />
+          <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain', borderRadius: `${overlay.borderRadius || 0}px`, overflow: 'hidden' }} draggable={false} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
             <Move size={20} style={{ color }} />
@@ -186,7 +186,7 @@ function OverlayItem({
           borderRadius: `${overlay.borderRadius}px`,
           background: getBg(),
           border: getBorder(),
-          overflow: 'hidden',
+          overflow: overlay.type === 'flip' ? 'visible' : 'hidden',
           cursor: 'move',
           transition: 'border 0.15s',
         }}
