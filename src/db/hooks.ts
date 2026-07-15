@@ -175,6 +175,30 @@ export async function uploadFile(file: File, pathPrefix: string): Promise<string
   return data.publicUrl;
 }
 
+// ─── Undo State ──────────────────────────────────────────────────────────
+
+let lastPageState: DeckPage | null = null;
+
+async function saveStateForUndo(pageId: string) {
+  const { data } = await supabase.from('pages').select('*').eq('id', pageId).single();
+  if (data) {
+    lastPageState = data;
+  }
+}
+
+export async function undoLastAction() {
+  if (!lastPageState) return;
+  const state = lastPageState;
+  lastPageState = null; // Can only undo once
+  await supabase.from('pages').update({ 
+    overlays: state.overlays,
+    backgroundColor: state.backgroundColor,
+    imageUrl: state.imageUrl,
+    imageDataUrl: state.imageDataUrl
+  }).eq('id', state.id);
+  await updateDeck(state.deckId, {});
+}
+
 export async function addPage(deckId: string, imageUrl: string, width: number, height: number, existingCount: number, backgroundType: 'image' | 'video' = 'image'): Promise<string> {
   const id = uuidv4();
   const page: DeckPage = {
@@ -211,6 +235,7 @@ export async function addBlankPage(deckId: string, existingCount: number): Promi
 }
 
 export async function updatePage(id: string, changes: Partial<DeckPage>) {
+  await saveStateForUndo(id);
   await supabase.from('pages').update(changes).eq('id', id);
 }
 
@@ -261,6 +286,7 @@ export async function reorderPages(deckId: string, orderedIds: string[]) {
 // ─── Overlay Helpers ─────────────────────────────────────────────────────────
 
 export async function addOverlay(pageId: string, overlay: Omit<Overlay, 'id' | 'pageId'>): Promise<string> {
+  await saveStateForUndo(pageId);
   const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (!page) throw new Error('Page not found');
   const id = uuidv4();
@@ -271,6 +297,7 @@ export async function addOverlay(pageId: string, overlay: Omit<Overlay, 'id' | '
 }
 
 export async function updateOverlay(pageId: string, overlayId: string, changes: Partial<Overlay>) {
+  await saveStateForUndo(pageId);
   const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (!page) return;
   const overlays = (page.overlays || []).map((o: Overlay) => (o.id === overlayId ? { ...o, ...changes } : o));
@@ -279,6 +306,7 @@ export async function updateOverlay(pageId: string, overlayId: string, changes: 
 }
 
 export async function deleteOverlay(pageId: string, overlayId: string) {
+  await saveStateForUndo(pageId);
   const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (!page) return;
   const overlays = (page.overlays || []).filter((o: Overlay) => o.id !== overlayId);
@@ -287,6 +315,7 @@ export async function deleteOverlay(pageId: string, overlayId: string) {
 }
 
 export async function duplicateOverlay(pageId: string, overlayId: string) {
+  await saveStateForUndo(pageId);
   const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (!page) return;
   const orig = (page.overlays || []).find((o: Overlay) => o.id === overlayId);

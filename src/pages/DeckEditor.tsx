@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Globe, Link2, Save, Settings, Check, ChevronDown, Upload, X } from 'lucide-react';
-import { useDeck, usePages, updateDeck, setDeckStatus, setTransition } from '../db/hooks';
+import { useDeck, usePages, updateDeck, setDeckStatus, setTransition, undoLastAction } from '../db/hooks';
 import PageSidebar from '../components/PageSidebar';
 import PageCanvas from '../components/PageCanvas';
 import OverlaySettingsPanel from '../components/OverlaySettingsPanel';
@@ -39,6 +39,20 @@ export default function DeckEditor() {
     };
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          undoLastAction();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Auto-select first page when pages load
   useEffect(() => {
