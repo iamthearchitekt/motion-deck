@@ -221,6 +221,15 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             <div className="mt-2">
               <Toggle label="Visible" checked={overlay.visible} onChange={v => update({ visible: v })} />
             </div>
+            {(overlay.type === 'image' || overlay.type === 'gif' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') && (
+              <div className="mt-3 field-group">
+                <label className="field-label">Image Fit</label>
+                <select value={overlay.fitMode || 'contain'} onChange={e => update({ fitMode: e.target.value as 'contain' | 'cover' })} className="w-full">
+                  <option value="contain">Contain (Fit to bounds)</option>
+                  <option value="cover">Cover (Fill bounds)</option>
+                </select>
+              </div>
+            )}
           </div>
         )}
 

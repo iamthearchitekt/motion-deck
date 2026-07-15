@@ -64,7 +64,7 @@ function OverlayItem({
       case 'image':
       case 'gif':
         return overlay.mediaUrl ? (
-          <img src={overlay.mediaUrl} alt={overlay.label || (overlay.type === 'gif' ? 'GIF' : 'Image')} className="w-full h-full pointer-events-none" style={{ objectFit: 'contain' }} draggable={false} />
+          <img src={overlay.mediaUrl} alt={overlay.label || (overlay.type === 'gif' ? 'GIF' : 'Image')} className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} draggable={false} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
             <Image size={20} style={{ color }} />
@@ -80,7 +80,7 @@ function OverlayItem({
             muted
             controls={false}
             className="w-full h-full pointer-events-none"
-            style={{ objectFit: 'contain' }}
+            style={{ objectFit: overlay.fitMode || 'contain' }}
             playsInline
             draggable={false}
           />
@@ -95,7 +95,7 @@ function OverlayItem({
         const hasImages = overlay.carouselImages && overlay.carouselImages.length > 0;
         return hasImages ? (
           <div className="w-full h-full relative select-none">
-            <img src={overlay.carouselImages![0]} alt="Carousel slide 1" className="w-full h-full pointer-events-none" style={{ objectFit: 'contain' }} draggable={false} />
+            <img src={overlay.carouselImages![0]} alt="Carousel slide 1" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} draggable={false} />
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
               1 / {overlay.carouselImages!.length}
             </div>
@@ -112,7 +112,7 @@ function OverlayItem({
       }
       case 'flip':
         return overlay.flipFrontUrl ? (
-          <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: 'contain' }} draggable={false} />
+          <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} draggable={false} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
             <Move size={20} style={{ color }} />

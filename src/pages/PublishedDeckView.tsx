@@ -50,11 +50,11 @@ function PublishedOverlay({ overlay }: {
             >
               {/* Front Side */}
               <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden' }}>
-                {overlay.flipFrontUrl && <img src={overlay.flipFrontUrl} alt="Front" className="w-full h-full object-contain pointer-events-none" />}
+                {overlay.flipFrontUrl && <img src={overlay.flipFrontUrl} alt="Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} />}
               </div>
               {/* Back Side */}
               <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                {overlay.flipBackUrl && <img src={overlay.flipBackUrl} alt="Back" className="w-full h-full object-contain pointer-events-none" />}
+                {overlay.flipBackUrl && <img src={overlay.flipBackUrl} alt="Back" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain' }} />}
               </div>
             </div>
           </div>
@@ -63,7 +63,7 @@ function PublishedOverlay({ overlay }: {
       case 'image':
       case 'gif':
         return overlay.mediaUrl ? (
-          <img src={overlay.mediaUrl} alt={overlay.label || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src={overlay.mediaUrl} alt={overlay.label || ''} style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }} />
         ) : null;
 
       case 'mp4':
@@ -75,7 +75,7 @@ function PublishedOverlay({ overlay }: {
             muted
             controls={false}
             playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }}
             poster={overlay.posterUrl}
           />
         ) : null;

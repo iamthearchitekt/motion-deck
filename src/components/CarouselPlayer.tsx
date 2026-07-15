@@ -224,7 +224,7 @@ export default function CarouselPlayer({ overlay }: { overlay: Overlay }) {
                 src={img} 
                 alt={`Slide ${idx}`} 
                 className={`w-full h-full pointer-events-none transition-all duration-500 origin-center ${isActive ? 'scale-100 opacity-100 blur-none' : 'scale-[0.80] opacity-40 blur-[4px]'}`} 
-                style={{ objectFit: 'contain' }} 
+                style={{ objectFit: overlay.fitMode || 'contain' }} 
                 draggable={false} 
               />
             </div>
