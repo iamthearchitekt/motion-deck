@@ -20,6 +20,8 @@ function formatUrl(url?: string) {
 function PublishedOverlay({ overlay }: {
   overlay: Overlay;
 }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
   if (!overlay.visible) return null;
 
   const style: React.CSSProperties = {
@@ -35,6 +37,29 @@ function PublishedOverlay({ overlay }: {
 
   const content = () => {
     switch (overlay.type) {
+      case 'flip':
+        return (
+          <div 
+            className="w-full h-full cursor-pointer"
+            style={{ perspective: '1000px' }}
+            onClick={() => setIsFlipped(!isFlipped)}
+          >
+            <div 
+              className="w-full h-full relative transition-transform duration-700 ease-in-out"
+              style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+            >
+              {/* Front Side */}
+              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden' }}>
+                {overlay.flipFrontUrl && <img src={overlay.flipFrontUrl} alt="Front" className="w-full h-full object-contain pointer-events-none" />}
+              </div>
+              {/* Back Side */}
+              <div className="absolute inset-0 w-full h-full" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                {overlay.flipBackUrl && <img src={overlay.flipBackUrl} alt="Back" className="w-full h-full object-contain pointer-events-none" />}
+              </div>
+            </div>
+          </div>
+        );
+
       case 'image':
       case 'gif':
         return overlay.mediaUrl ? (

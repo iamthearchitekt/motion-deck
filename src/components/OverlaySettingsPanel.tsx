@@ -79,6 +79,8 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const overlay = overlayId ? (page.overlays || []).find(o => o.id === overlayId) : null;
   const mediaRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLInputElement>(null);
+  const flipFrontRef = useRef<HTMLInputElement>(null);
+  const flipBackRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const update = useCallback((changes: Partial<Overlay>) => {
@@ -180,12 +182,12 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
 
       <div className="p-3 space-y-4">
         {/* Label */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
           <TextInput label="Label" value={overlay.label || ''} onChange={v => update({ label: v })} placeholder="Optional label..." />
         )}
 
         {/* Position & Size */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
           <div>
             <p className="field-label mb-2">Position & Size</p>
             <div className="grid grid-cols-2 gap-2">
@@ -198,7 +200,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         )}
 
         {/* Appearance */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
           <div>
             <p className="field-label mb-2">Appearance</p>
             <div className="space-y-2">
@@ -343,6 +345,64 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             <p className="text-[10px] text-text-muted mt-2">Auto-plays in presentation mode until clicked. Drag canvas corners to scale.</p>
           </div>
         )}
+        {/* ── Flip Card ── */}
+        {overlay.type === 'flip' && (
+          <div>
+            <p className="field-label mb-2">Front & Back Images</p>
+            <div className="space-y-3">
+              {/* Front Image */}
+              <div>
+                <span className="text-xs text-text-muted mb-1 block">Front Side</span>
+                {overlay.flipFrontUrl ? (
+                  <div className="rounded-lg overflow-hidden bg-surface-3 relative group h-20">
+                    <img src={overlay.flipFrontUrl} alt="Front" className="w-full h-full object-contain" />
+                    <button
+                      onClick={() => flipFrontRef.current?.click()}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-medium transition-opacity"
+                    >
+                      Replace Front
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => flipFrontRef.current?.click()}
+                    disabled={isUploading}
+                    className={`w-full border border-dashed rounded-lg py-3 flex flex-col items-center gap-1 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
+                  >
+                    <Upload size={14} />
+                    <span className="text-xs">Upload Front</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Back Image */}
+              <div>
+                <span className="text-xs text-text-muted mb-1 block">Back Side</span>
+                {overlay.flipBackUrl ? (
+                  <div className="rounded-lg overflow-hidden bg-surface-3 relative group h-20">
+                    <img src={overlay.flipBackUrl} alt="Back" className="w-full h-full object-contain" />
+                    <button
+                      onClick={() => flipBackRef.current?.click()}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-medium transition-opacity"
+                    >
+                      Replace Back
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => flipBackRef.current?.click()}
+                    disabled={isUploading}
+                    className={`w-full border border-dashed rounded-lg py-3 flex flex-col items-center gap-1 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
+                  >
+                    <Upload size={14} />
+                    <span className="text-xs">Upload Back</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-text-muted mt-2">Images will flip interactively in the published presentation when clicked.</p>
+          </div>
+        )}
       </div>
 
       <input
@@ -351,6 +411,42 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         accept={overlay.type === 'gif' ? 'image/gif' : overlay.type === 'image' ? 'image/png,image/jpeg,image/webp' : 'video/mp4,video/*'}
         className="hidden"
         onChange={e => e.target.files?.[0] && handleMediaUpload(e.target.files[0])}
+      />
+      
+      <input
+        ref={flipFrontRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={async e => {
+          if (!e.target.files?.[0]) return;
+          setIsUploading(true);
+          try {
+            const publicUrl = await uploadFile(e.target.files[0], deckId);
+            update({ flipFrontUrl: publicUrl });
+          } finally {
+            setIsUploading(false);
+            if (flipFrontRef.current) flipFrontRef.current.value = '';
+          }
+        }}
+      />
+
+      <input
+        ref={flipBackRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={async e => {
+          if (!e.target.files?.[0]) return;
+          setIsUploading(true);
+          try {
+            const publicUrl = await uploadFile(e.target.files[0], deckId);
+            update({ flipBackUrl: publicUrl });
+          } finally {
+            setIsUploading(false);
+            if (flipBackRef.current) flipBackRef.current.value = '';
+          }
+        }}
       />
     </div>
   );

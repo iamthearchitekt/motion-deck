@@ -2,7 +2,7 @@
 
 export type DeckStatus = 'draft' | 'published' | 'archived';
 
-export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image';
+export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip';
 
 export type TransitionStyle = 'none' | 'fade' | 'fadeUp';
 
@@ -74,6 +74,10 @@ export interface Overlay {
 
   // Carousel-specific
   carouselImages?: string[];
+
+  // Flip-specific
+  flipFrontUrl?: string;
+  flipBackUrl?: string;
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────

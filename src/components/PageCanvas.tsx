@@ -14,19 +14,21 @@ interface Props {
 }
 
 const OVERLAY_ICONS: Record<OverlayType, React.ReactNode> = {
-  link: <Link size={12} />,
-  image: <Image size={12} />,
-  gif: <Image size={12} />,
-  mp4: <Film size={12} />,
-  carousel: <div className="flex -space-x-1"><Image size={12}/><Image size={12}/></div>,
+  link: <Link size={16} />,
+  image: <Image size={16} />,
+  gif: <Image size={16} />,
+  mp4: <Film size={16} />,
+  carousel: <div className="flex -space-x-2"><Image size={16}/><Image size={16}/></div>,
+  flip: <Move size={16} />,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
-  link: '#c9a251',
-  image: '#c9a251',
-  gif: '#c9a251',
-  mp4: '#c9a251',
-  carousel: '#c9a251',
+  link: '#3b82f6',
+  image: '#10b981',
+  gif: '#f59e0b',
+  mp4: '#ef4444',
+  carousel: '#8b5cf6',
+  flip: '#ec4899',
 };
 
 function OverlayItem({
@@ -108,6 +110,15 @@ function OverlayItem({
           </div>
         );
       }
+      case 'flip':
+        return overlay.flipFrontUrl ? (
+          <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: 'contain' }} draggable={false} />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
+            <Move size={20} style={{ color }} />
+            <span className="text-[10px] font-medium uppercase" style={{ color }}>FLIP CARD</span>
+          </div>
+        );
       default: // link
         return overlay.label ? (
           <div className="w-full h-full flex items-center justify-center">
@@ -118,13 +129,13 @@ function OverlayItem({
   };
 
   const getBg = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel') return 'transparent';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return 'transparent';
     if (overlay.type === 'link' && overlay.buttonStyle === 'invisible') return 'transparent';
     return `${color}18`;
   };
 
   const getBorder = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel') return isSelected ? `2px solid ${color}` : 'none';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return isSelected ? `2px solid ${color}` : 'none';
     return isSelected ? `2px solid ${color}` : `1px dashed ${color}60`;
   };
 
@@ -224,7 +235,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
 
   const handleAddOverlay = async (type: OverlayType) => {
     setShowAddMenu(false);
-    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image';
+    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip';
     const defaults: Omit<Overlay, 'id' | 'pageId'> = {
       type,
       // Media overlays spawn centered
@@ -256,6 +267,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
     { type: 'gif', label: 'GIF Overlay', icon: <Image size={14} />, desc: 'Animated GIF layer' },
     { type: 'mp4', label: 'MP4 Video', icon: <Film size={14} />, desc: 'Inline video player' },
     { type: 'carousel', label: 'Image Carousel', icon: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>, desc: 'Scrollable image gallery' },
+    { type: 'flip', label: 'Flip Card', icon: <Move size={14} />, desc: 'Interactive double-sided image' },
   ];
 
   return (
