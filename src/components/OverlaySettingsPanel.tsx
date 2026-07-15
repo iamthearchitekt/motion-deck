@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize } from 'lucide-react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
@@ -98,6 +98,26 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
     await duplicateOverlay(page.id, overlayId);
   };
 
+  const handleBringToFront = () => {
+    if (!overlay) return;
+    const overlays = [...(page.overlays || [])];
+    const index = overlays.findIndex(o => o.id === overlay.id);
+    if (index === -1 || index === overlays.length - 1) return;
+    overlays.splice(index, 1);
+    overlays.push(overlay);
+    updatePage(page.id, { overlays });
+  };
+
+  const handleSendToBack = () => {
+    if (!overlay) return;
+    const overlays = [...(page.overlays || [])];
+    const index = overlays.findIndex(o => o.id === overlay.id);
+    if (index <= 0) return;
+    overlays.splice(index, 1);
+    overlays.unshift(overlay);
+    updatePage(page.id, { overlays });
+  };
+
   const handleMediaUpload = async (file: File) => {
     setIsUploading(true);
     try {
@@ -182,7 +202,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
 
       <div className="p-3 space-y-4">
         {/* Layout Shortcuts */}
-        <div>
+        <div className="space-y-2">
           <button
             onClick={() => update({ x: 0, y: 0, width: 100, height: 100 })}
             className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
@@ -190,6 +210,23 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             <Maximize size={14} />
             Fill Frame
           </button>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleBringToFront}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <ArrowUpToLine size={14} />
+              Bring to Front
+            </button>
+            <button
+              onClick={handleSendToBack}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <ArrowDownToLine size={14} />
+              Send to Back
+            </button>
+          </div>
         </div>
 
         {/* Label */}
