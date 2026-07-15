@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload } from 'lucide-react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
@@ -181,6 +181,17 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
       </div>
 
       <div className="p-3 space-y-4">
+        {/* Layout Shortcuts */}
+        <div>
+          <button
+            onClick={() => update({ x: 0, y: 0, width: 100, height: 100 })}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+          >
+            <Maximize size={14} />
+            Fill Frame
+          </button>
+        </div>
+
         {/* Label */}
         {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
           <TextInput label="Label" value={overlay.label || ''} onChange={v => update({ label: v })} placeholder="Optional label..." />
