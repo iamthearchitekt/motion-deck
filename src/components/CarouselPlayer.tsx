@@ -144,7 +144,7 @@ export default function CarouselPlayer({ overlay }: { overlay: Overlay }) {
 
   if (isGridMode) {
     return (
-      <div className="w-full h-full relative group bg-black/90 backdrop-blur-xl overflow-hidden flex flex-col pointer-events-auto">
+      <div className="w-full h-full relative group bg-transparent overflow-hidden flex flex-col pointer-events-auto">
         <style>{`
           /* Hide scrollbar for Chrome, Safari and Opera */
           .hide-scroll::-webkit-scrollbar {
