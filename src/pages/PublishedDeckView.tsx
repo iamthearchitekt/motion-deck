@@ -8,6 +8,7 @@ import PageTransitionWrapper from '../components/PageTransitionWrapper';
 import PageNavigationControls from '../components/PageNavigationControls';
 import CarouselPlayer from '../components/CarouselPlayer';
 import { makePlaceholderPage } from '../data/sampleDeck';
+import { Box } from 'lucide-react';
 
 function formatUrl(url?: string) {
   if (!url) return '#';
@@ -107,6 +108,21 @@ function PublishedOverlay({ overlay }: {
           </a>
         );
       }
+
+      case 'model3d':
+        return overlay.mediaUrl ? (
+          <a
+            href={`/viewer?url=${encodeURIComponent(overlay.mediaUrl)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all hover:bg-black/50"
+            style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
+          >
+             <div className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-semibold text-sm shadow-2xl pointer-events-none">
+               <Box size={16} /> View 3D Space
+             </div>
+          </a>
+        ) : null;
 
       case 'carousel':
         return <CarouselPlayer overlay={overlay} />;

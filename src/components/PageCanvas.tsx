@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Link, Image, Film, MousePointer, Plus, Move } from 'lucide-react';
+import { Link, Image, Film, MousePointer, Plus, Move, Box } from 'lucide-react';
 import type { Deck, DeckPage, Overlay, OverlayType } from '../types';
 import { SLIDE_SIZES } from '../types';
 import { addOverlay, updateOverlay } from '../db/hooks';
@@ -20,6 +20,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ReactNode> = {
   mp4: <Film size={16} />,
   carousel: <div className="flex -space-x-2"><Image size={16}/><Image size={16}/></div>,
   flip: <Move size={16} />,
+  model3d: <Box size={16} />,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -29,6 +30,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   mp4: '#ef4444',
   carousel: '#8b5cf6',
   flip: '#ec4899',
+  model3d: '#06b6d4',
 };
 
 function OverlayItem({
@@ -119,6 +121,19 @@ function OverlayItem({
             <span className="text-[10px] font-medium uppercase" style={{ color }}>FLIP CARD</span>
           </div>
         );
+      case 'model3d':
+        return overlay.mediaUrl ? (
+          <div className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none" style={{ borderRadius: `${overlay.borderRadius || 0}px` }}>
+             <button className="flex items-center gap-2 px-5 py-2.5 bg-accent text-black rounded-full font-semibold text-sm shadow-xl">
+               <Box size={16} /> View 3D Space
+             </button>
+          </div>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
+            <Box size={20} style={{ color }} />
+            <span className="text-[10px] font-medium uppercase" style={{ color }}>3D MODEL</span>
+          </div>
+        );
       default: // link
         return overlay.label ? (
           <div className="w-full h-full flex items-center justify-center">
@@ -129,13 +144,13 @@ function OverlayItem({
   };
 
   const getBg = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return 'transparent';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'model3d') return 'transparent';
     if (overlay.type === 'link' && overlay.buttonStyle === 'invisible') return 'transparent';
     return `${color}18`;
   };
 
   const getBorder = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return isSelected ? `2px solid ${color}` : 'none';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'model3d') return isSelected ? `2px solid ${color}` : 'none';
     return isSelected ? `2px solid ${color}` : `1px dashed ${color}60`;
   };
 
@@ -235,7 +250,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
 
   const handleAddOverlay = async (type: OverlayType) => {
     setShowAddMenu(false);
-    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip';
+    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip' || type === 'model3d';
     const defaults: Omit<Overlay, 'id' | 'pageId'> = {
       type,
       // Media overlays spawn centered
@@ -268,6 +283,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
     { type: 'mp4', label: 'MP4 Video', icon: <Film size={14} />, desc: 'Inline video player' },
     { type: 'carousel', label: 'Image Carousel', icon: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>, desc: 'Scrollable image gallery' },
     { type: 'flip', label: 'Flip Card', icon: <Move size={14} />, desc: 'Interactive double-sided image' },
+    { type: 'model3d', label: '3D Space', icon: <Box size={14} />, desc: 'Interactive 3D model viewer' },
   ];
 
   return (

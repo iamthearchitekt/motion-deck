@@ -3,6 +3,7 @@ import DeckLibrary from './pages/DeckLibrary';
 import DeckEditor from './pages/DeckEditor';
 import PublishedDeckView from './pages/PublishedDeckView';
 import ProtectedRoute from './components/ProtectedRoute';
+import SpaceViewer from './pages/SpaceViewer';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <Route path="/" element={<ProtectedRoute><DeckLibrary /></ProtectedRoute>} />
         <Route path="/editor/:deckId" element={<ProtectedRoute><DeckEditor /></ProtectedRoute>} />
         <Route path="/deck/:slug" element={<PublishedDeckView />} />
+        <Route path="/viewer" element={<SpaceViewer />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -121,7 +121,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const handleMediaUpload = async (file: File) => {
     setIsUploading(true);
     try {
-      const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : 'mp4';
+      const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : file.name.endsWith('.glb') || file.name.endsWith('.gltf') ? 'model3d' : 'mp4';
       const publicUrl = await uploadFile(file, deckId);
       const mediaId = await addMedia({
         deckId,
@@ -230,12 +230,12 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         </div>
 
         {/* Label */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'model3d' && (
           <TextInput label="Label" value={overlay.label || ''} onChange={v => update({ label: v })} placeholder="Optional label..." />
         )}
 
         {/* Position & Size */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'model3d' && (
           <div>
             <p className="field-label mb-2">Position & Size</p>
             <div className="grid grid-cols-2 gap-2">
@@ -248,7 +248,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         )}
 
         {/* Appearance */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'model3d' && (
           <div>
             <p className="field-label mb-2">Appearance</p>
             <div className="space-y-2">
@@ -305,14 +305,19 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           </div>
         )}
 
-        {/* ── GIF / MP4 / Image Media ── */}
-        {(overlay.type === 'gif' || overlay.type === 'mp4' || overlay.type === 'image') && (
+        {/* ── GIF / MP4 / Image / 3D Media ── */}
+        {(overlay.type === 'gif' || overlay.type === 'mp4' || overlay.type === 'image' || overlay.type === 'model3d') && (
           <div>
             <p className="field-label mb-2">Media</p>
             {overlay.mediaUrl ? (
               <div className="rounded-lg overflow-hidden bg-surface-3 relative group">
                 {overlay.type === 'gif' || overlay.type === 'image' ? (
                   <img src={overlay.mediaUrl} alt="Media" className="w-full h-24" style={{ objectFit: 'contain' }} />
+                ) : overlay.type === 'model3d' ? (
+                  <div className="w-full h-24 flex flex-col items-center justify-center text-text-muted gap-2">
+                     <span className="text-xs font-mono">{overlay.mediaUrl.split('/').pop()}</span>
+                     <span className="text-[10px]">3D Model Ready</span>
+                  </div>
                 ) : (
                   <video src={overlay.mediaUrl} className="w-full h-24" style={{ objectFit: 'contain' }} muted playsInline />
                 )}
@@ -330,7 +335,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                 className={`w-full border border-dashed rounded-lg py-4 flex flex-col items-center gap-2 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
               >
                 <Upload size={16} />
-                <span className="text-xs">{isUploading ? 'Uploading...' : `Upload ${overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : 'MP4'}`}</span>
+                <span className="text-xs">{isUploading ? 'Uploading...' : `Upload ${overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : overlay.type === 'model3d' ? '3D Model (.glb)' : 'MP4'}`}</span>
               </button>
             )}
             <p className="text-[10px] text-text-muted mt-2">Drag corners on canvas to scale. Maintains natural aspect ratio.</p>
@@ -465,7 +470,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
       <input
         ref={mediaRef}
         type="file"
-        accept={overlay.type === 'gif' ? 'image/gif' : overlay.type === 'image' ? 'image/png,image/jpeg,image/webp' : 'video/mp4,video/*'}
+        accept={overlay.type === 'gif' ? 'image/gif' : overlay.type === 'image' ? 'image/png,image/jpeg,image/webp' : overlay.type === 'model3d' ? '.glb,.gltf' : 'video/mp4,video/*'}
         className="hidden"
         onChange={e => e.target.files?.[0] && handleMediaUpload(e.target.files[0])}
       />

@@ -2,7 +2,7 @@
 
 export type DeckStatus = 'draft' | 'published' | 'archived';
 
-export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip';
+export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip' | 'model3d';
 
 export type TransitionStyle = 'none' | 'fade' | 'fadeUp';
 
@@ -24,7 +24,7 @@ export interface MediaItem {
   id: string;
   deckId: string;
   name: string;
-  type: 'gif' | 'mp4' | 'image';
+  type: 'gif' | 'mp4' | 'image' | 'model3d';
   /** Object URL or data URL for local preview */
   url: string;
   /** Stored as base64 for IndexedDB persistence */
