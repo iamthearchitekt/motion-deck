@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Environment, PointerLockControls, OrbitControls, DeviceOrientationControls, ContactShadows, useProgress, Html } from '@react-three/drei';
 import { EffectComposer, SSAO, Bloom } from '@react-three/postprocessing';
@@ -112,7 +112,8 @@ export default function ArchitecturalViewer({
   mode, 
   time, 
   season,
-  hdri
+  hdri,
+  is360Mode
 }: { 
   url: string; 
   isNight: boolean; 
@@ -120,6 +121,7 @@ export default function ArchitecturalViewer({
   time: string;
   season: string;
   hdri: string | null;
+  is360Mode?: boolean;
 }) {
   
   // Determine lighting and HDRI preset based on season and time
@@ -169,42 +171,8 @@ export default function ArchitecturalViewer({
     sunPosition = [20, 10, 10]; // Even lower sun in winter
   }
 
-  const [is360Mode, setIs360Mode] = useState(false);
-
-  const requestGyroPermission = () => {
-    if (is360Mode) {
-      setIs360Mode(false);
-      return;
-    }
-    
-    if (typeof (window as any).DeviceOrientationEvent !== 'undefined' && typeof (window as any).DeviceOrientationEvent.requestPermission === 'function') {
-      (window as any).DeviceOrientationEvent.requestPermission()
-        .then((permissionState: string) => {
-          if (permissionState === 'granted') {
-            setIs360Mode(true);
-          } else {
-            alert('Permission to access device orientation was denied.');
-          }
-        })
-        .catch(console.error);
-    } else {
-      setIs360Mode(true);
-    }
-  };
-
   return (
     <div className="relative w-full h-full">
-      {/* 360 Mode Toggle Button */}
-      <button 
-        onClick={requestGyroPermission}
-        className={`absolute bottom-6 right-6 z-50 px-4 py-3 rounded-full font-semibold shadow-lg backdrop-blur-md transition-all border ${is360Mode ? 'bg-accent text-white border-accent' : 'bg-black/60 text-white border-white/20 hover:bg-black/80'}`}
-      >
-        <div className="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22" x2="12" y2="12"></line></svg>
-          {is360Mode ? 'Exit 360 Mode' : 'Enable 360 Mode'}
-        </div>
-      </button>
-
       <Canvas 
       shadows 
       camera={{ position: [0, 1.7, 8], fov: 60 }}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ArchitecturalViewer from '../components/3d/ArchitecturalViewer';
-import { Sun, Moon, Maximize, Orbit, Footprints, AlertCircle } from 'lucide-react';
+import { Sun, Moon, Maximize, Orbit, Footprints, AlertCircle, Smartphone } from 'lucide-react';
 
 export default function SpaceViewer() {
   const [searchParams] = useSearchParams();
@@ -12,6 +12,28 @@ export default function SpaceViewer() {
   
   const [isNight, setIsNight] = useState(time === 'night');
   const [mode, setMode] = useState<'walk' | 'orbit'>('walk');
+  const [is360Mode, setIs360Mode] = useState(false);
+
+  const requestGyroPermission = () => {
+    if (is360Mode) {
+      setIs360Mode(false);
+      return;
+    }
+    
+    if (typeof (window as any).DeviceOrientationEvent !== 'undefined' && typeof (window as any).DeviceOrientationEvent.requestPermission === 'function') {
+      (window as any).DeviceOrientationEvent.requestPermission()
+        .then((permissionState: string) => {
+          if (permissionState === 'granted') {
+            setIs360Mode(true);
+          } else {
+            alert('Permission to access device orientation was denied.');
+          }
+        })
+        .catch(console.error);
+    } else {
+      setIs360Mode(true);
+    }
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -60,9 +82,17 @@ export default function SpaceViewer() {
         
         <button 
           onClick={() => setMode('orbit')}
-          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'orbit' ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'orbit' && !is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
         >
           <Orbit size={16} /> Orbit
+        </button>
+
+        {/* 360 AR Button */}
+        <button 
+          onClick={requestGyroPermission}
+          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+        >
+          <Smartphone size={16} /> 360 AR
         </button>
 
         <div className="w-px h-8 bg-white/20 mx-2" />
@@ -85,8 +115,15 @@ export default function SpaceViewer() {
 
       </div>
 
+      {/* 360 AR Instructions */}
+      {is360Mode && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none opacity-40">
+          <p className="text-white text-sm bg-black/50 px-4 py-2 rounded-lg text-center">Look around using your device.</p>
+        </div>
+      )}
+
       {/* Instructions for Walk mode */}
-      {mode === 'walk' && (
+      {mode === 'walk' && !is360Mode && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none opacity-40">
           <p className="text-white text-sm bg-black/50 px-4 py-2 rounded-lg text-center">Click anywhere to look around.<br/>Press ESC to unlock.</p>
         </div>
@@ -94,7 +131,7 @@ export default function SpaceViewer() {
 
       {/* 3D Canvas */}
       <div className="w-full h-full absolute inset-0 z-0">
-        <ArchitecturalViewer url={url} isNight={isNight} mode={mode} time={time} season={season} hdri={hdri} />
+        <ArchitecturalViewer url={url} isNight={isNight} mode={mode} time={time} season={season} hdri={hdri} is360Mode={is360Mode} />
       </div>
 
     </div>
