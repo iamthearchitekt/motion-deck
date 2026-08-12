@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Environment, PointerLockControls, OrbitControls, DeviceOrientationControls, ContactShadows, useProgress, Html } from '@react-three/drei';
 import { EffectComposer, SSAO, Bloom } from '@react-three/postprocessing';
@@ -63,6 +63,42 @@ function WalkController({ active }: { active: boolean }) {
   return null;
 }
 
+function TeleportController({ target, controlsRef, onArrived }: { target: THREE.Vector3 | null; controlsRef: any, onArrived: () => void }) {
+  const { camera } = useThree();
+  const activeTarget = useRef<THREE.Vector3 | null>(null);
+
+  useEffect(() => {
+    if (target) activeTarget.current = target.clone();
+  }, [target]);
+
+  useFrame((_, delta) => {
+    if (activeTarget.current) {
+      const speed = 8 * delta; // Glide speed
+      
+      // We want the camera to be at eye level (1.7m) above the clicked floor point
+      const eyePos = new THREE.Vector3(activeTarget.current.x, 1.7, activeTarget.current.z);
+      const dist = camera.position.distanceTo(eyePos);
+      
+      if (dist > 0.05) {
+        camera.position.lerp(eyePos, speed);
+        
+        // Keep orbit target just slightly in front of camera so it doesn't snap around
+        if (controlsRef.current) {
+          const forward = new THREE.Vector3();
+          camera.getWorldDirection(forward);
+          controlsRef.current.target.copy(camera.position).add(forward.multiplyScalar(0.1));
+          controlsRef.current.update();
+        }
+      } else {
+        activeTarget.current = null;
+        onArrived();
+      }
+    }
+  });
+  
+  return null;
+}
+
 function Loader() {
   const { progress } = useProgress();
   return (
@@ -76,7 +112,7 @@ function Loader() {
   );
 }
 
-function Model({ url }: { url: string }) {
+function Model({ url, onTeleport }: { url: string; onTeleport: (pt: THREE.Vector3) => void }) {
   const { scene } = useGLTF(url);
 
   useEffect(() => {
@@ -103,7 +139,18 @@ function Model({ url }: { url: string }) {
     }
   }, [scene]);
 
-  return <primitive object={scene} />;
+  return (
+    <primitive 
+      object={scene} 
+      onPointerUp={(e: any) => {
+        // Only teleport if it was a clean click/tap (not a drag to orbit)
+        if (e.delta <= 2) {
+          e.stopPropagation();
+          onTeleport(e.point);
+        }
+      }}
+    />
+  );
 }
 
 export default function ArchitecturalViewer({ 
@@ -123,6 +170,8 @@ export default function ArchitecturalViewer({
   hdri: string | null;
   is360Mode?: boolean;
 }) {
+  const orbitRef = useRef<any>(null);
+  const [teleportTarget, setTeleportTarget] = useState<THREE.Vector3 | null>(null);
   
   // Determine lighting and HDRI preset based on season and time
   let preset: any = 'city';
@@ -207,7 +256,7 @@ export default function ArchitecturalViewer({
         )}
         
         {/* Removed Bounds to prevent camera start position overrides */}
-        <Model url={url} />
+        <Model url={url} onTeleport={setTeleportTarget} />
 
         {/* Soft floor shadow */}
         <ContactShadows 
@@ -234,6 +283,7 @@ export default function ArchitecturalViewer({
       </Suspense>
       
       <WalkController active={mode === 'walk' && !is360Mode} />
+      <TeleportController target={teleportTarget} controlsRef={orbitRef} onArrived={() => setTeleportTarget(null)} />
 
       {is360Mode ? (
         <DeviceOrientationControls />
@@ -241,6 +291,7 @@ export default function ArchitecturalViewer({
         <PointerLockControls />
       ) : (
         <OrbitControls 
+          ref={orbitRef}
           makeDefault 
           autoRotate={false}
           target={[0, 1.7, 0]}
