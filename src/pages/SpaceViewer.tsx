@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Scene from '../components/3d/Scene';
 import { Sun, Moon, Maximize, Orbit, Footprints, AlertCircle } from 'lucide-react';
@@ -9,15 +9,6 @@ export default function SpaceViewer() {
   
   const [isNight, setIsNight] = useState(false);
   const [mode, setMode] = useState<'walk' | 'orbit'>('walk');
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {

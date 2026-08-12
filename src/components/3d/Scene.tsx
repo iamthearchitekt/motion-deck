@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { useGLTF, Environment, PointerLockControls, OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -11,7 +11,7 @@ function Model({ url }: { url: string }) {
     if (scene) {
       const box = new THREE.Box3().setFromObject(scene);
       const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
+
       
       // Reset position to center
       scene.position.x = -center.x;
