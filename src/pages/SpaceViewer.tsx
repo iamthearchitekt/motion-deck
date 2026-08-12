@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import Scene from '../components/3d/Scene';
+import ArchitecturalViewer from '../components/3d/ArchitecturalViewer';
 import { Sun, Moon, Maximize, Orbit, Footprints, AlertCircle } from 'lucide-react';
 
 export default function SpaceViewer() {
   const [searchParams] = useSearchParams();
   const url = searchParams.get('url');
+  const time = searchParams.get('time') || 'noon';
+  const season = searchParams.get('season') || 'summer';
   
-  const [isNight, setIsNight] = useState(false);
+  const [isNight, setIsNight] = useState(time === 'night');
   const [mode, setMode] = useState<'walk' | 'orbit'>('walk');
 
   const toggleFullscreen = () => {
@@ -91,7 +93,7 @@ export default function SpaceViewer() {
 
       {/* 3D Canvas */}
       <div className="w-full h-full absolute inset-0 z-0">
-        <Scene url={url} isNight={isNight} mode={mode} />
+        <ArchitecturalViewer url={url} isNight={isNight} mode={mode} time={time} season={season} />
       </div>
 
     </div>

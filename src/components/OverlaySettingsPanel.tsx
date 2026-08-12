@@ -341,6 +341,42 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             <p className="text-[10px] text-text-muted mt-2">Drag corners on canvas to scale. Maintains natural aspect ratio.</p>
           </div>
         )}
+        
+        {/* ── 3D Model Settings ── */}
+        {overlay.type === 'model3d' && (
+          <div>
+            <p className="field-label mb-2 mt-4">Environment Vibe</p>
+            <div className="space-y-3">
+              <div className="field-group">
+                <label className="field-label">Time of Day</label>
+                <select 
+                  value={overlay.envTimeOfDay || 'noon'} 
+                  onChange={e => update({ envTimeOfDay: e.target.value as any })} 
+                  className="w-full"
+                >
+                  <option value="morning">Morning</option>
+                  <option value="noon">Noon</option>
+                  <option value="sunset">Sunset / Golden Hour</option>
+                  <option value="night">Night</option>
+                </select>
+              </div>
+              <div className="field-group">
+                <label className="field-label">Season</label>
+                <select 
+                  value={overlay.envSeason || 'summer'} 
+                  onChange={e => update({ envSeason: e.target.value as any })} 
+                  className="w-full"
+                >
+                  <option value="spring">Spring</option>
+                  <option value="summer">Summer</option>
+                  <option value="autumn">Autumn</option>
+                  <option value="winter">Winter</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-[10px] text-text-muted mt-2">These settings dynamically change the HDRI sky and lighting in the viewer.</p>
+          </div>
+        )}
         {/* ── Carousel ── */}
         {overlay.type === 'carousel' && (
           <div>

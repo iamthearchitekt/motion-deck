@@ -78,6 +78,10 @@ export interface Overlay {
   // Flip-specific
   flipFrontUrl?: string;
   flipBackUrl?: string;
+
+  // 3D Model specific
+  envTimeOfDay?: 'morning' | 'noon' | 'sunset' | 'night';
+  envSeason?: 'spring' | 'summer' | 'autumn' | 'winter';
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
