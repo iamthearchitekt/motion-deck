@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine, MoveHorizontal, MoveVertical } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
@@ -226,6 +226,23 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             >
               <ArrowDownToLine size={14} />
               Send to Back
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => update({ x: (100 - (overlay.width || 0)) / 2 })}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <MoveHorizontal size={14} />
+              Center Horiz.
+            </button>
+            <button
+              onClick={() => update({ y: (100 - (overlay.height || 0)) / 2 })}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <MoveVertical size={14} />
+              Center Vert.
             </button>
           </div>
         </div>
