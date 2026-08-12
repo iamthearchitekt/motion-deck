@@ -71,7 +71,7 @@ export default function SpaceViewer() {
       </div>
 
       {/* Floating Controls Overlay */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1.5 sm:p-2 rounded-2xl border border-white/10 shadow-2xl transform scale-[0.85] sm:scale-100 origin-bottom w-max max-w-[95vw] overflow-x-auto no-scrollbar">
         
         <button 
           onClick={() => setMode('walk')}
