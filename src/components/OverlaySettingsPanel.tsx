@@ -402,7 +402,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                   className={`w-full border border-dashed rounded-lg py-3 flex flex-col items-center gap-1 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
                 >
                   <Upload size={14} />
-                  <span className="text-xs">Upload .hdr / .jpg Skybox</span>
+                  <span className="text-xs">Upload .hdr / .exr / .jpg Skybox</span>
                 </button>
               )}
               <p className="text-[10px] text-text-muted mt-2">Uploading a custom skybox overrides the Season/Time preset environment.</p>
@@ -582,7 +582,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
       <input
         ref={hdriRef}
         type="file"
-        accept=".hdr,image/jpeg,image/png,image/webp"
+        accept=".hdr,.exr,image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={async e => {
           if (!e.target.files?.[0]) return;
