@@ -175,7 +175,7 @@ export default function ArchitecturalViewer({
     <div className="relative w-full h-full">
       <Canvas 
       shadows 
-      camera={{ position: [0, 1.7, 8], fov: 60 }}
+      camera={{ position: [0, 1.7, 0.1], fov: 60 }}
       gl={{ antialias: true, preserveDrawingBuffer: true, stencil: false }}
     >
       <color attach="background" args={[bg]} />
@@ -243,8 +243,9 @@ export default function ArchitecturalViewer({
         <OrbitControls 
           makeDefault 
           autoRotate={false}
+          target={[0, 1.7, 0]}
           maxPolarAngle={Math.PI / 2 + 0.05} 
-          minDistance={1}
+          minDistance={0.1}
           maxDistance={100}
         />
       )}
