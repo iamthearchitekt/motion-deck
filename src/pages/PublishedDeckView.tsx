@@ -112,7 +112,7 @@ function PublishedOverlay({ overlay }: {
       case 'model3d':
         return overlay.mediaUrl ? (
           <a
-            href={`/viewer?url=${encodeURIComponent(overlay.mediaUrl)}&time=${overlay.envTimeOfDay || 'noon'}&season=${overlay.envSeason || 'summer'}`}
+            href={`/viewer?url=${encodeURIComponent(overlay.mediaUrl)}&time=${overlay.envTimeOfDay || 'noon'}&season=${overlay.envSeason || 'summer'}${overlay.hdriUrl ? `&hdri=${encodeURIComponent(overlay.hdriUrl)}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all hover:bg-black/50"

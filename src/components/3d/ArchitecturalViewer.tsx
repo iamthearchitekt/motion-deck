@@ -1,8 +1,67 @@
 import { Suspense, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useGLTF, Environment, PointerLockControls, OrbitControls, ContactShadows, Bounds, useProgress, Html } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useGLTF, Environment, PointerLockControls, OrbitControls, ContactShadows, useProgress, Html } from '@react-three/drei';
 import { EffectComposer, SSAO, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
+
+const keys: Record<string, boolean> = { w: false, a: false, s: false, d: false, q: false, u: false, e: false };
+
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in keys) keys[k] = true;
+});
+window.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in keys) keys[k] = false;
+});
+
+function WalkController({ active }: { active: boolean }) {
+  const { camera } = useThree();
+  const direction = new THREE.Vector3();
+  const right = new THREE.Vector3();
+  
+  useFrame((_, delta) => {
+    if (!active || !document.pointerLockElement) return;
+    
+    const speed = 15 * delta; // units per second
+    
+    if (keys.w) {
+      camera.getWorldDirection(direction);
+      direction.y = 0; // lock to horizontal plane
+      direction.normalize();
+      camera.position.addScaledVector(direction, speed);
+    }
+    if (keys.s) {
+      camera.getWorldDirection(direction);
+      direction.y = 0;
+      direction.normalize();
+      camera.position.addScaledVector(direction, -speed);
+    }
+    if (keys.a) {
+      camera.getWorldDirection(direction);
+      direction.y = 0;
+      direction.normalize();
+      right.crossVectors(camera.up, direction).normalize();
+      camera.position.addScaledVector(right, speed);
+    }
+    if (keys.d) {
+      camera.getWorldDirection(direction);
+      direction.y = 0;
+      direction.normalize();
+      right.crossVectors(camera.up, direction).normalize();
+      camera.position.addScaledVector(right, -speed);
+    }
+    // Verticality (u or e for up, q for down)
+    if (keys.u || keys.e) {
+      camera.position.y += speed;
+    }
+    if (keys.q) {
+      camera.position.y -= speed;
+    }
+  });
+
+  return null;
+}
 
 function Loader() {
   const { progress } = useProgress();
@@ -22,6 +81,14 @@ function Model({ url }: { url: string }) {
 
   useEffect(() => {
     if (scene) {
+      // Manually center the model at 0,0,0 and place it on the floor
+      const box = new THREE.Box3().setFromObject(scene);
+      const center = box.getCenter(new THREE.Vector3());
+      
+      scene.position.x = -center.x;
+      scene.position.y = -box.min.y;
+      scene.position.z = -center.z;
+
       scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
@@ -44,13 +111,15 @@ export default function ArchitecturalViewer({
   isNight, 
   mode, 
   time, 
-  season 
+  season,
+  hdri
 }: { 
   url: string; 
   isNight: boolean; 
   mode: 'walk' | 'orbit';
   time: string;
   season: string;
+  hdri: string | null;
 }) {
   
   // Determine lighting and HDRI preset based on season and time
@@ -128,11 +197,14 @@ export default function ArchitecturalViewer({
           color="#aaccff" 
         />
         
-        <Environment preset={preset} />
+        {hdri ? (
+          <Environment files={hdri} background={true} />
+        ) : (
+          <Environment preset={preset} />
+        )}
         
-        <Bounds fit clip observe margin={1.2}>
-          <Model url={url} />
-        </Bounds>
+        {/* Removed Bounds to prevent camera start position overrides */}
+        <Model url={url} />
 
         {/* Soft floor shadow */}
         <ContactShadows 
@@ -155,10 +227,11 @@ export default function ArchitecturalViewer({
             mipmapBlur 
             intensity={isNight || time === 'sunset' || time === 'night' ? 0.8 : 0.15} 
           />
-          {/* Note: Postprocessing automatically uses ACESFilmic ToneMapping by default in newer versions, but we can enforce exposure via gl prop if needed, or stick to default Postprocessing tone mapping. */}
         </EffectComposer>
       </Suspense>
       
+      <WalkController active={mode === 'walk'} />
+
       {mode === 'walk' ? (
         <PointerLockControls />
       ) : (

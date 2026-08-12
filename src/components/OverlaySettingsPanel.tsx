@@ -81,6 +81,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const carouselRef = useRef<HTMLInputElement>(null);
   const flipFrontRef = useRef<HTMLInputElement>(null);
   const flipBackRef = useRef<HTMLInputElement>(null);
+  const hdriRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const update = useCallback((changes: Partial<Overlay>) => {
@@ -374,7 +375,38 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                 </select>
               </div>
             </div>
-            <p className="text-[10px] text-text-muted mt-2">These settings dynamically change the HDRI sky and lighting in the viewer.</p>
+            <p className="text-[10px] text-text-muted mt-2">These settings dynamically change the default lighting and tone.</p>
+            
+            <div className="mt-4 pt-4 border-t border-border-default">
+              <p className="field-label mb-2">Custom HDRI Skybox (Optional)</p>
+              {overlay.hdriUrl ? (
+                <div className="rounded-lg overflow-hidden bg-surface-3 relative group h-12 flex items-center justify-center">
+                  <span className="text-xs font-mono truncate px-2 text-text-muted">{overlay.hdriUrl.split('/').pop()}</span>
+                  <button
+                    onClick={() => hdriRef.current?.click()}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-medium transition-opacity"
+                  >
+                    Replace HDRI
+                  </button>
+                  <button
+                    onClick={() => update({ hdriUrl: undefined })}
+                    className="absolute right-1 top-1 p-1 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => hdriRef.current?.click()}
+                  disabled={isUploading}
+                  className={`w-full border border-dashed rounded-lg py-3 flex flex-col items-center gap-1 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
+                >
+                  <Upload size={14} />
+                  <span className="text-xs">Upload .hdr / .jpg Skybox</span>
+                </button>
+              )}
+              <p className="text-[10px] text-text-muted mt-2">Uploading a custom skybox overrides the Season/Time preset environment.</p>
+            </div>
           </div>
         )}
         {/* ── Carousel ── */}
@@ -543,6 +575,24 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           } finally {
             setIsUploading(false);
             if (flipBackRef.current) flipBackRef.current.value = '';
+          }
+        }}
+      />
+      
+      <input
+        ref={hdriRef}
+        type="file"
+        accept=".hdr,image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={async e => {
+          if (!e.target.files?.[0]) return;
+          setIsUploading(true);
+          try {
+            const publicUrl = await uploadFile(e.target.files[0], deckId);
+            update({ hdriUrl: publicUrl });
+          } finally {
+            setIsUploading(false);
+            if (hdriRef.current) hdriRef.current.value = '';
           }
         }}
       />

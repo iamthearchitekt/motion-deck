@@ -8,6 +8,7 @@ export default function SpaceViewer() {
   const url = searchParams.get('url');
   const time = searchParams.get('time') || 'noon';
   const season = searchParams.get('season') || 'summer';
+  const hdri = searchParams.get('hdri');
   
   const [isNight, setIsNight] = useState(time === 'night');
   const [mode, setMode] = useState<'walk' | 'orbit'>('walk');
@@ -93,7 +94,7 @@ export default function SpaceViewer() {
 
       {/* 3D Canvas */}
       <div className="w-full h-full absolute inset-0 z-0">
-        <ArchitecturalViewer url={url} isNight={isNight} mode={mode} time={time} season={season} />
+        <ArchitecturalViewer url={url} isNight={isNight} mode={mode} time={time} season={season} hdri={hdri} />
       </div>
 
     </div>
