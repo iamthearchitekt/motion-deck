@@ -590,6 +590,9 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           try {
             const publicUrl = await uploadFile(e.target.files[0], deckId);
             update({ hdriUrl: publicUrl });
+          } catch (err: any) {
+            console.error('HDRI Upload Error:', err);
+            alert(`HDRI Upload failed: ${err.message || 'Unknown error'}. Check if your database allows this file type and size.`);
           } finally {
             setIsUploading(false);
             if (hdriRef.current) hdriRef.current.value = '';
