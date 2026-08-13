@@ -19,137 +19,39 @@ function formatUrl(url?: string) {
 }
 
 function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasDrawnCanvas, setHasDrawnCanvas] = useState(false);
-  
-  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setIsPlaying(false);
-    setHasDrawnCanvas(false);
-    
-    if (!videoRef.current) return;
-    const v = videoRef.current;
-    
-    v.defaultMuted = true;
-    v.muted = true;
-    v.playsInline = true;
-    v.crossOrigin = 'anonymous';
-    
-    let drawFirstFrame: () => void;
-    
-    if (isMobile) {
-      drawFirstFrame = () => {
-        if (v && canvasRef.current && v.readyState >= 2) {
-          const c = canvasRef.current;
-          c.width = v.videoWidth || v.clientWidth;
-          c.height = v.videoHeight || v.clientHeight;
-          const ctx = c.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(v, 0, 0, c.width, c.height);
-            setHasDrawnCanvas(true);
-          }
-        }
-      };
-
-      v.addEventListener('loadeddata', drawFirstFrame);
-      v.addEventListener('seeked', drawFirstFrame);
-    }
-
-    if (v.paused) {
-      const playPromise = v.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Autoplay was prevented.
-          if (isMobile) {
-            // Force a seek to 0.1s to ensure a frame is available for drawing if loadeddata isn't enough
-            if (v.currentTime === 0) v.currentTime = 0.1;
-          }
-        });
-      }
-    } else {
-      setIsPlaying(true);
-    }
-    
-    return () => {
-      if (isMobile && drawFirstFrame) {
-        v.removeEventListener('loadeddata', drawFirstFrame);
-        v.removeEventListener('seeked', drawFirstFrame);
-      }
-    };
-  }, [src, isMobile]);
-
-  if (!isMobile) {
-    return (
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        className={className}
-        style={style}
-        autoPlay
-        loop
-        muted
-        playsInline
-        controls={false}
-        onClick={(e) => {
-          const v = e.target as HTMLVideoElement;
+  // We use dangerouslySetInnerHTML to force the browser to parse the raw HTML 
+  // with autoplay, muted, and playsinline all present instantly. 
+  // This bypasses a known React bug where Safari intercepts the video creation 
+  // before properties are fully applied, causing it to block autoplay and show the giant play button.
+  return (
+    <div 
+      ref={containerRef}
+      className={`relative w-full h-full cursor-pointer ${className || ''}`} 
+      style={style} 
+      onClick={(e) => {
+        const v = containerRef.current?.querySelector('video');
+        if (v) {
           if (v.paused) v.play();
           else v.pause();
-          if (onClick) onClick(e);
-        }}
-      />
-    );
-  }
-
-  const handlePlayState = () => setIsPlaying(true);
-  const handlePauseState = () => setIsPlaying(false);
-
-  return (
-    <div className={`relative w-full h-full cursor-pointer ${className || ''}`} style={style} onClick={(e) => {
-        if (videoRef.current) {
-          if (videoRef.current.paused) videoRef.current.play();
-          else videoRef.current.pause();
         }
         if (onClick) onClick(e);
-    }}>
-      {/* Explicit poster image */}
-      {poster && !isPlaying && (
-        <img 
-          src={poster} 
-          alt="" 
-          className="absolute inset-0 z-20 w-full h-full pointer-events-none" 
-          style={{ objectFit: style?.objectFit || 'cover' }}
-        />
-      )}
-      
-      {/* Auto-extracted canvas frame for when poster is absent */}
-      {!poster && !isPlaying && (
-        <canvas 
-          ref={canvasRef} 
-          className={`absolute inset-0 z-10 w-full h-full pointer-events-none transition-opacity duration-300 ${hasDrawnCanvas ? 'opacity-100' : 'opacity-0'}`}
-          style={{ objectFit: style?.objectFit || 'cover' }}
-        />
-      )}
-      
-      {/* The actual video, hidden visually until it plays to hide Safari's native button */}
-      <video
-        ref={videoRef}
-        src={src}
-        className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
-        style={{ objectFit: style?.objectFit || 'cover' }}
-        autoPlay
-        loop
-        muted
-        playsInline
-        controls={false}
-        onPlay={handlePlayState}
-        onPlaying={handlePlayState}
-        onPause={handlePauseState}
-      />
-    </div>
+      }}
+      dangerouslySetInnerHTML={{
+        __html: `
+          <video
+            src="${src}"
+            ${poster ? `poster="${poster}"` : ''}
+            style="width: 100%; height: 100%; object-fit: ${style?.objectFit || 'cover'}; pointer-events: none;"
+            autoplay
+            loop
+            muted
+            playsinline
+          ></video>
+        `
+      }}
+    />
   );
 }
 
