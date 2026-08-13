@@ -56,20 +56,6 @@ export default function SpaceViewer() {
   return (
     <div className="w-full h-[100dvh] bg-black relative overflow-hidden font-sans">
       
-      {/* Header Overlay */}
-      <div className="absolute top-0 left-0 right-0 p-6 z-10 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 pointer-events-auto">
-          {/* Mock Client Logo / Text */}
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-             <span className="text-white font-bold text-xs">MD</span>
-          </div>
-          <div>
-            <h1 className="text-white font-bold text-sm leading-tight">Client Showcase</h1>
-            <p className="text-white/60 text-xs">Interactive 3D Space</p>
-          </div>
-        </div>
-      </div>
-
       {/* Floating Controls Container */}
       <div className="absolute left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[98vw]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
         <div className="flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1 sm:p-2 rounded-2xl border border-white/10 shadow-2xl overflow-x-auto no-scrollbar w-full justify-center">
