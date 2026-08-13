@@ -305,12 +305,12 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
 
   return (
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
-      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden">
+      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '100dvh' }}>
         <div
           className={`relative bg-black z-10 ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
             width: '100%',
-            maxWidth: `calc(100dvh * ${aspectRatio})`,
+            maxWidth: `min(calc(100dvh * ${aspectRatio}), calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)))`,
             aspectRatio: `${aspectRatio}`,
             containerType: 'inline-size'
           }}
@@ -386,7 +386,7 @@ export default function PublishedDeckView() {
 
   if (notFound || (!deck && !deckId)) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+      <div className="bg-black flex flex-col items-center justify-center gap-4" style={{ minHeight: '100dvh' }}>
         <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 mb-2" />
         <p style={{ color: '#444', fontSize: 14 }}>Deck not found.</p>
       </div>
@@ -395,7 +395,7 @@ export default function PublishedDeckView() {
 
   if (!deck || !pages) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+      <div className="bg-black flex flex-col items-center justify-center gap-6" style={{ minHeight: '100dvh' }}>
         <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 animate-pulse" />
         <div className="w-5 h-5 border-2 border-[#333] border-t-accent rounded-full animate-spin"></div>
       </div>
@@ -404,7 +404,7 @@ export default function PublishedDeckView() {
 
   if (pages.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+      <div className="bg-black flex flex-col items-center justify-center gap-4" style={{ minHeight: '100dvh' }}>
         <p className="text-gray-500 text-sm">This deck has no pages yet.</p>
       </div>
     );
@@ -415,7 +415,7 @@ export default function PublishedDeckView() {
   const aspectRatio = deck ? SLIDE_SIZES[deck.slideSize || '16:9'].aspectRatio : 16 / 9;
 
   return (
-    <div className="min-h-screen bg-surface-3 relative">
+    <div className="bg-surface-3 relative" style={{ minHeight: '100dvh' }}>
       {/* Global Fixed Background Branding */}
       {isVertical && deck?.showPaddingBranding && brandingImageUrl && (
         <div className="fixed inset-0 flex pointer-events-none z-0">
@@ -430,12 +430,13 @@ export default function PublishedDeckView() {
       )}
 
       {/* Deck pages */}
-      <div className="flex flex-col relative z-10">
+      <div className="flex flex-col relative z-10" style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}>
         {pages.map((page: DeckPage, i: number) => (
           <div
             key={page.id}
             ref={el => { pageRefs.current[i] = el; }}
             id={`page-${i}`}
+            style={{ scrollSnapAlign: 'start' }}
           >
             <PublishedPage
               deck={deck}

@@ -45,7 +45,7 @@ export default function SpaceViewer() {
 
   if (!url) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+      <div className="bg-black text-white flex flex-col items-center justify-center" style={{ minHeight: '100dvh' }}>
         <AlertCircle size={48} className="text-red-500 mb-4" />
         <h1 className="text-xl font-bold">No 3D Model Provided</h1>
         <p className="text-gray-400 mt-2">Please launch this viewer from a Motiondeck presentation.</p>
@@ -57,7 +57,7 @@ export default function SpaceViewer() {
     <div className="w-full h-[100dvh] bg-black relative overflow-hidden font-sans">
       
       {/* Floating Controls Container */}
-      <div className="absolute left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[98vw]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+      <div className="absolute left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[98vw]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         <div className="flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1 sm:p-2 rounded-2xl border border-white/10 shadow-2xl overflow-x-auto no-scrollbar w-full justify-center">
           
           <button 

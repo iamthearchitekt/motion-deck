@@ -48,7 +48,10 @@ export default function PageNavigationControls({ pages, currentIndex, onNavigate
   useEffect(() => {
     let startX: number | null = null;
     const handleTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
+      const x = e.touches[0].clientX;
+      // Ignore swipes starting within 20px of screen edges (iOS back/forward gesture area)
+      if (x < 20 || x > window.innerWidth - 20) return;
+      startX = x;
     };
     const handleTouchEnd = (e: TouchEvent) => {
       if (startX === null) return;
@@ -61,7 +64,7 @@ export default function PageNavigationControls({ pages, currentIndex, onNavigate
       }
       startX = null;
     };
-    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
