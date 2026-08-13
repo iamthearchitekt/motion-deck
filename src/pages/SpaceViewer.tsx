@@ -70,49 +70,54 @@ export default function SpaceViewer() {
         </div>
       </div>
 
-      {/* Floating Controls Overlay */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1.5 sm:p-2 rounded-2xl border border-white/10 shadow-2xl transform scale-[0.85] sm:scale-100 origin-bottom w-max max-w-[95vw] overflow-x-auto no-scrollbar">
-        
-        <button 
-          onClick={() => setMode('walk')}
-          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'walk' ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
-        >
-          <Footprints size={16} /> Walk
-        </button>
-        
-        <button 
-          onClick={() => setMode('orbit')}
-          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'orbit' && !is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
-        >
-          <Orbit size={16} /> Orbit
-        </button>
+      {/* Floating Controls Container */}
+      <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[95vw]">
+        <div className="flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1.5 sm:p-2 rounded-2xl border border-white/10 shadow-2xl transform scale-[0.85] sm:scale-100 origin-bottom overflow-x-auto no-scrollbar w-full justify-center">
+          
+          <button 
+            onClick={() => setMode('walk')}
+            className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'walk' ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+          >
+            <Footprints size={16} /> Walk
+          </button>
+          
+          <button 
+            onClick={() => setMode('orbit')}
+            className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${mode === 'orbit' && !is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+          >
+            <Orbit size={16} /> Orbit
+          </button>
 
-        {/* 360 AR Button */}
-        <button 
-          onClick={requestGyroPermission}
-          className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
-        >
-          <Smartphone size={16} /> 360 AR
-        </button>
+          {/* 360 AR Button */}
+          <button 
+            onClick={requestGyroPermission}
+            className={`px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all ${is360Mode ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+          >
+            <Smartphone size={16} /> 360 AR
+          </button>
 
-        <div className="w-px h-8 bg-white/20 mx-2" />
+          <div className="w-px h-8 bg-white/20 mx-2 flex-shrink-0" />
 
-        <button 
-          onClick={() => setIsNight(!isNight)}
-          className="w-10 h-10 flex items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
-          title="Toggle Day/Night"
-        >
-          {isNight ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
+          <button 
+            onClick={() => setIsNight(!isNight)}
+            className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+            title="Toggle Day/Night"
+          >
+            {isNight ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
 
-        <button 
-          onClick={toggleFullscreen}
-          className="w-10 h-10 flex items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
-          title="Fullscreen"
-        >
-          <Maximize size={18} />
-        </button>
+          <button 
+            onClick={toggleFullscreen}
+            className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl text-white hover:bg-white/10 transition-colors"
+            title="Fullscreen"
+          >
+            <Maximize size={18} />
+          </button>
 
+        </div>
+        <div className="hidden sm:block text-white/30 text-[10px] font-medium tracking-widest uppercase pointer-events-none select-none">
+          Press ESC to Exit
+        </div>
       </div>
 
       {/* 360 AR Instructions */}
