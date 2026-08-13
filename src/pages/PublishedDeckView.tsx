@@ -116,21 +116,18 @@ function PublishedOverlay({ overlay }: {
             target="_blank"
             rel="noopener noreferrer"
             className="w-full h-full flex items-center justify-center transition-all group"
-            style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none', containerType: 'size' }}
+            style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
           >
              <div 
-               className="flex items-center justify-center rounded-full font-bold shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform"
+               className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform whitespace-nowrap"
                style={{
                  backgroundColor: overlay.buttonColor || '#ffffff',
                  color: overlay.textColor || '#000000',
                  scale: overlay.buttonScale || 1,
-                 width: '100%',
-                 height: '100%',
-                 fontSize: 'min(20cqmin, 40cqw)',
-                 gap: '3cqmin'
+                 fontSize: '1.125rem'
                }}
              >
-               <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
+               <Box size={20} /> View 3D Space
              </div>
           </a>
         ) : null;
