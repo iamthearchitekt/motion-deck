@@ -424,6 +424,44 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
               )}
               <p className="text-[10px] text-text-muted mt-2">Uploading a custom skybox overrides the Season/Time preset environment.</p>
             </div>
+            <div className="mt-4 pt-4 border-t border-border-default">
+              <p className="field-label mb-2">Button Appearance</p>
+              <div className="space-y-3">
+                <div className="field-group">
+                  <label className="field-label">Button Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color" 
+                      value={overlay.buttonColor || '#ffffff'} 
+                      onChange={e => update({ buttonColor: e.target.value })} 
+                      className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent" 
+                    />
+                    <input 
+                      value={overlay.buttonColor || '#ffffff'} 
+                      onChange={e => update({ buttonColor: e.target.value })} 
+                      className="flex-1 font-mono text-xs" 
+                    />
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Text Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color" 
+                      value={overlay.textColor || '#000000'} 
+                      onChange={e => update({ textColor: e.target.value })} 
+                      className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent" 
+                    />
+                    <input 
+                      value={overlay.textColor || '#000000'} 
+                      onChange={e => update({ textColor: e.target.value })} 
+                      className="flex-1 font-mono text-xs" 
+                    />
+                  </div>
+                </div>
+                <NumberInput label="Button Scale" value={overlay.buttonScale || 1} onChange={v => update({ buttonScale: v })} min={0.5} max={5} step={0.1} unit="x" />
+              </div>
+            </div>
           </div>
         )}
         {/* ── Carousel ── */}

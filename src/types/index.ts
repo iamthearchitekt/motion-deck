@@ -59,6 +59,7 @@ export interface Overlay {
   buttonStyle?: 'solid' | 'outline' | 'ghost' | 'invisible';
   buttonColor?: string;
   textColor?: string;
+  buttonScale?: number;
 
   // Media (GIF / MP4)
   mediaId?: string;

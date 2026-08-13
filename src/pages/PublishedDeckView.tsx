@@ -118,7 +118,14 @@ function PublishedOverlay({ overlay }: {
             className="w-full h-full flex items-center justify-center transition-all group"
             style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
           >
-             <div className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-semibold text-sm shadow-2xl pointer-events-none group-hover:scale-105 transition-transform">
+             <div 
+               className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform"
+               style={{
+                 backgroundColor: overlay.buttonColor || '#ffffff',
+                 color: overlay.textColor || '#000000',
+                 scale: overlay.buttonScale || 1,
+               }}
+             >
                <Box size={16} /> View 3D Space
              </div>
           </a>
