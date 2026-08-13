@@ -18,6 +18,46 @@ function formatUrl(url?: string) {
   return url;
 }
 
+function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  useEffect(() => {
+    if (!videoRef.current) return;
+    const v = videoRef.current;
+    v.defaultMuted = true;
+    v.muted = true;
+    v.playsInline = true;
+    const playPromise = v.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay was prevented. 
+        // We can safely ignore this, as user interaction will be required.
+      });
+    }
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster}
+      className={className}
+      style={style}
+      autoPlay
+      loop
+      muted
+      playsInline
+      controls={false}
+      onClick={(e) => {
+        const v = e.target as HTMLVideoElement;
+        if (v.paused) v.play();
+        else v.pause();
+        if (onClick) onClick(e);
+      }}
+    />
+  );
+}
+
 function PublishedOverlay({ overlay }: {
   overlay: Overlay;
 }) {
@@ -69,13 +109,8 @@ function PublishedOverlay({ overlay }: {
 
       case 'mp4':
         return overlay.mediaUrl ? (
-          <video
+          <AutoPlayVideo
             src={overlay.mediaUrl}
-            autoPlay
-            loop
-            muted
-            controls={false}
-            playsInline
             style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }}
             poster={overlay.posterUrl}
           />
@@ -201,7 +236,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
             <div className="absolute inset-0">
               {placeholderSrc && (
                 page.backgroundType === 'video' ? (
-                  <video src={placeholderSrc} className="w-full h-full object-cover select-none" autoPlay loop muted playsInline />
+                  <AutoPlayVideo src={placeholderSrc} className="w-full h-full object-cover select-none" />
                 ) : (
                   <img src={placeholderSrc} alt={page.title} className="w-full h-full object-cover select-none" draggable={false} />
                 )
@@ -325,10 +360,6 @@ export default function PublishedDeckView() {
         ))}
       </div>
 
-      {/* Subtle branding */}
-      <div className="fixed top-4 left-4 z-30 opacity-40 hover:opacity-80 transition-opacity">
-        <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-5 w-auto" />
-      </div>
 
       {/* Navigation controls */}
       <PageNavigationControls
