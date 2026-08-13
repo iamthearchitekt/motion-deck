@@ -54,7 +54,7 @@ export default function SpaceViewer() {
   }
 
   return (
-    <div className="w-full h-screen bg-black relative overflow-hidden font-sans">
+    <div className="w-full h-[100dvh] bg-black relative overflow-hidden font-sans">
       
       {/* Header Overlay */}
       <div className="absolute top-0 left-0 right-0 p-6 z-10 flex items-center justify-between pointer-events-none">
@@ -71,7 +71,7 @@ export default function SpaceViewer() {
       </div>
 
       {/* Floating Controls Container */}
-      <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[98vw]">
+      <div className="absolute left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-max max-w-[98vw]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
         <div className="flex items-center gap-1 sm:gap-2 bg-black/60 backdrop-blur-xl p-1 sm:p-2 rounded-2xl border border-white/10 shadow-2xl overflow-x-auto no-scrollbar w-full justify-center">
           
           <button 
