@@ -18,38 +18,128 @@ function formatUrl(url?: string) {
   return url;
 }
 
-function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+// Global flag: has the user interacted with the page yet?
+// iOS Safari requires a user gesture before allowing video playback.
+let _userHasInteracted = false;
+const _interactionListeners: Set<() => void> = new Set();
 
-  // We use dangerouslySetInnerHTML to force the browser to parse the raw HTML 
-  // with autoplay, muted, and playsinline all present instantly. 
-  // This bypasses a known React bug where Safari intercepts the video creation 
-  // before properties are fully applied, causing it to block autoplay and show the giant play button.
-  return (
-    <div 
-      ref={containerRef}
-      className={`relative w-full h-full cursor-pointer ${className || ''}`} 
-      style={style} 
-      onClick={(e) => {
-        const v = containerRef.current?.querySelector('video');
-        if (v) {
-          if (v.paused) v.play();
-          else v.pause();
+if (typeof window !== 'undefined') {
+  const markInteracted = () => {
+    if (_userHasInteracted) return;
+    _userHasInteracted = true;
+    _interactionListeners.forEach(fn => fn());
+    _interactionListeners.clear();
+    window.removeEventListener('touchstart', markInteracted, true);
+    window.removeEventListener('click', markInteracted, true);
+    window.removeEventListener('scroll', markInteracted, true);
+  };
+  window.addEventListener('touchstart', markInteracted, { capture: true, passive: true });
+  window.addEventListener('click', markInteracted, { capture: true });
+  window.addEventListener('scroll', markInteracted, { capture: true, passive: true });
+}
+
+function useUserInteracted() {
+  const [interacted, setInteracted] = useState(_userHasInteracted);
+  useEffect(() => {
+    if (_userHasInteracted) { setInteracted(true); return; }
+    const cb = () => setInteracted(true);
+    _interactionListeners.add(cb);
+    return () => { _interactionListeners.delete(cb); };
+  }, []);
+  return interacted;
+}
+
+function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(poster || null);
+  const userInteracted = useUserInteracted();
+  
+  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const showVideo = !isMobile || userInteracted;
+
+  // On mobile, extract first frame as a thumbnail before the user interacts
+  useEffect(() => {
+    if (!isMobile || poster || !src) return;
+    
+    // Create an offscreen video to grab the first frame
+    const offscreen = document.createElement('video');
+    offscreen.crossOrigin = 'anonymous';
+    offscreen.muted = true;
+    offscreen.playsInline = true;
+    offscreen.preload = 'metadata';
+    offscreen.src = src;
+    
+    const grabFrame = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = offscreen.videoWidth || 640;
+        canvas.height = offscreen.videoHeight || 360;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+          setThumbnailUrl(canvas.toDataURL('image/jpeg', 0.8));
         }
+      } catch { /* CORS may block this — that's fine, we'll just show black */ }
+      offscreen.removeEventListener('seeked', grabFrame);
+      offscreen.src = '';
+    };
+    
+    offscreen.addEventListener('loadeddata', () => {
+      offscreen.currentTime = 0.1; // seek to get a frame
+    });
+    offscreen.addEventListener('seeked', grabFrame);
+    offscreen.load();
+    
+    return () => { offscreen.src = ''; };
+  }, [src, poster, isMobile]);
+
+  // Once we show the real video, force play
+  useEffect(() => {
+    if (!showVideo || !videoRef.current) return;
+    const v = videoRef.current;
+    v.muted = true;
+    const p = v.play();
+    if (p) p.catch(() => {});
+  }, [showVideo, src]);
+
+  // Mobile: show static thumbnail until user interacts
+  if (!showVideo) {
+    return (
+      <div
+        className={`relative w-full h-full ${className || ''}`}
+        style={{ ...style, backgroundColor: '#000' }}
+        onClick={onClick}
+      >
+        {thumbnailUrl && (
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className="w-full h-full"
+            style={{ objectFit: style?.objectFit || 'cover' }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Desktop (always) or Mobile (after interaction): render real video
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster}
+      className={className}
+      style={style}
+      autoPlay
+      loop
+      muted
+      playsInline
+      controls={false}
+      onClick={(e) => {
+        const v = e.target as HTMLVideoElement;
+        if (v.paused) v.play();
+        else v.pause();
         if (onClick) onClick(e);
-      }}
-      dangerouslySetInnerHTML={{
-        __html: `
-          <video
-            src="${src}"
-            ${poster ? `poster="${poster}"` : ''}
-            style="width: 100%; height: 100%; object-fit: ${style?.objectFit || 'cover'}; pointer-events: none;"
-            autoplay
-            loop
-            muted
-            playsinline
-          ></video>
-        `
       }}
     />
   );
