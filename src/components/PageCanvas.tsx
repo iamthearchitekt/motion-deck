@@ -130,9 +130,9 @@ function OverlayItem({
                  backgroundColor: overlay.buttonColor || '#ffffff',
                  color: overlay.textColor || '#000000',
                  scale: overlay.buttonScale || 1,
-                 fontSize: 'max(14px, 2.25cqw)',
-                 padding: 'max(8px, 1.25cqw) max(16px, 2.5cqw)',
-                 gap: 'max(4px, 0.75cqw)'
+                 fontSize: '2.25cqw',
+                 padding: '1.25cqw 2.5cqw',
+                 gap: '0.75cqw'
                }}
              >
                <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
