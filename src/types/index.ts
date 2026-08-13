@@ -50,6 +50,7 @@ export interface Overlay {
   opacity: number;
   borderRadius: number;
   visible: boolean;
+  locked?: boolean;
   label?: string;
 
   // Link / Button

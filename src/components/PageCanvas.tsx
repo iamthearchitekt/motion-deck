@@ -197,9 +197,9 @@ function OverlayItem({
           height: (el.offsetHeight / containerHeight) * 100,
         });
       }}
-      enableResizing={isSelected}
-      disableDragging={false}
-      style={{ zIndex: isSelected ? 20 : 10 }}
+      enableResizing={isSelected && !overlay.locked}
+      disableDragging={overlay.locked}
+      style={{ zIndex: isSelected ? 20 : 10, pointerEvents: overlay.locked ? 'none' : 'auto' }}
     >
       <div
         className="select-none"

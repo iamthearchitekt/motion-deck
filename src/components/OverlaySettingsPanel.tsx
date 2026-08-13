@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine, MoveHorizontal, MoveVertical } from 'lucide-react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine, MoveHorizontal, MoveVertical, Link, Image, Film, Move, Box, Lock, Unlock } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
@@ -7,6 +7,62 @@ interface Props {
   page: DeckPage;
   overlayId: string | null;
   deckId: string;
+  onSelectOverlay: (id: string | null) => void;
+}
+
+const OVERLAY_ICONS: Record<string, React.ReactNode> = {
+  link: <Link size={14} />,
+  image: <Image size={14} />,
+  gif: <Image size={14} />,
+  mp4: <Film size={14} />,
+  carousel: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>,
+  flip: <Move size={14} />,
+  model3d: <Box size={14} />,
+};
+
+function LayersList({ page, selectedOverlayId, onSelectOverlay }: { page: DeckPage, selectedOverlayId: string | null, onSelectOverlay: (id: string | null) => void }) {
+  const overlays = page.overlays || [];
+  return (
+    <div className="border-t border-border-default flex flex-col max-h-64 flex-shrink-0 bg-surface-2 shadow-2xl relative z-10">
+      <div className="px-4 py-2 border-b border-border-subtle font-semibold text-xs text-text-muted uppercase tracking-wider bg-surface-1">
+        Layers
+      </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {overlays.length === 0 ? (
+          <div className="p-4 text-center text-text-muted text-xs">No layers yet</div>
+        ) : (
+          [...overlays].reverse().map(overlay => (
+            <div 
+              key={overlay.id}
+              onClick={() => onSelectOverlay(overlay.id)}
+              className={`flex items-center gap-2 px-4 py-2 cursor-pointer border-b border-border-subtle/50 transition-colors ${selectedOverlayId === overlay.id ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-3 border-l-2 border-l-transparent'}`}
+            >
+              <div className="text-text-muted flex-shrink-0">{OVERLAY_ICONS[overlay.type]}</div>
+              <div className="flex-1 text-xs truncate text-text-primary">
+                {overlay.label || overlay.type.toUpperCase()}
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); updateOverlay(page.id, overlay.id, { locked: !overlay.locked }); }}
+                  className={`p-1 rounded hover:bg-surface-4 ${overlay.locked ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+                  title={overlay.locked ? "Unlock layer" : "Lock layer"}
+                >
+                  {overlay.locked ? <Lock size={12} /> : <Unlock size={12} />}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); updateOverlay(page.id, overlay.id, { visible: !overlay.visible }); }}
+                  className={`p-1 rounded hover:bg-surface-4 ${!overlay.visible ? 'text-text-muted opacity-50' : 'text-text-primary'}`}
+                  title={overlay.visible ? "Hide layer" : "Show layer"}
+                >
+                  {overlay.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 function NumberInput({ label, value, onChange, min = 0, max = 100, step = 0.5, unit = '%' }: {
@@ -75,7 +131,7 @@ function formatUrl(url?: string) {
   return url;
 }
 
-export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props) {
+export default function OverlaySettingsPanel({ page, overlayId, deckId, onSelectOverlay }: Props) {
   const overlay = overlayId ? (page.overlays || []).find(o => o.id === overlayId) : null;
   const mediaRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLInputElement>(null);
@@ -180,12 +236,14 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             </div>
           )}
         </div>
+        <LayersList page={page} selectedOverlayId={overlayId} onSelectOverlay={onSelectOverlay} />
       </div>
     );
   }
 
   return (
-    <div className="sidebar-panel w-64 flex-shrink-0 overflow-y-auto">
+    <div className="sidebar-panel w-64 flex-shrink-0 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto flex flex-col custom-scrollbar">
       <div className="sidebar-header">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider capitalize">{overlay.type} Overlay</span>
         <div className="flex gap-1">
@@ -654,6 +712,8 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           }
         }}
       />
+      </div>
+      <LayersList page={page} selectedOverlayId={overlayId} onSelectOverlay={onSelectOverlay} />
     </div>
   );
 }
