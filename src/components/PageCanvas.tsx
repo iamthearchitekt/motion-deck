@@ -125,15 +125,17 @@ function OverlayItem({
         return overlay.mediaUrl ? (
           <div className="w-full h-full flex items-center justify-center pointer-events-none" style={{ borderRadius: `${overlay.borderRadius || 0}px` }}>
              <div 
-               className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold shadow-xl whitespace-nowrap"
+               className="flex items-center justify-center rounded-full font-bold shadow-xl whitespace-nowrap"
                style={{
                  backgroundColor: overlay.buttonColor || '#ffffff',
                  color: overlay.textColor || '#000000',
                  scale: overlay.buttonScale || 1,
-                 fontSize: '1.125rem'
+                 fontSize: 'max(14px, 2.25cqw)',
+                 padding: 'max(8px, 1.25cqw) max(16px, 2.5cqw)',
+                 gap: 'max(4px, 0.75cqw)'
                }}
              >
-               <Box size={20} /> View 3D Space
+               <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
              </div>
           </div>
         ) : (
@@ -320,7 +322,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
         <div
           ref={observeSize}
           className="relative w-full overflow-hidden"
-          style={{ paddingBottom: `${(1 / aspectRatio) * 100}%` }}
+          style={{ paddingBottom: `${(1 / aspectRatio) * 100}%`, containerType: 'inline-size' }}
         >
           <div className="absolute inset-0 bg-surface-3" style={{ backgroundColor: page.backgroundColor || undefined }}>
             {placeholderSrc ? (

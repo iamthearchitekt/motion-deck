@@ -119,15 +119,17 @@ function PublishedOverlay({ overlay }: {
             style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
           >
              <div 
-               className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform whitespace-nowrap"
+               className="flex items-center justify-center rounded-full font-bold shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform whitespace-nowrap"
                style={{
                  backgroundColor: overlay.buttonColor || '#ffffff',
                  color: overlay.textColor || '#000000',
                  scale: overlay.buttonScale || 1,
-                 fontSize: '1.125rem'
+                 fontSize: 'max(14px, 2.25cqw)',
+                 padding: 'max(8px, 1.25cqw) max(16px, 2.5cqw)',
+                 gap: 'max(4px, 0.75cqw)'
                }}
              >
-               <Box size={20} /> View 3D Space
+               <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
              </div>
           </a>
         ) : null;
@@ -188,6 +190,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
             width: '100%',
             maxWidth: `calc(100dvh * ${aspectRatio})`,
             aspectRatio: `${aspectRatio}`,
+            containerType: 'inline-size'
           }}
         >
           <div
