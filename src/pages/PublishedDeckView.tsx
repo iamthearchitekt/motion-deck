@@ -115,10 +115,10 @@ function PublishedOverlay({ overlay }: {
             href={`/viewer?url=${encodeURIComponent(overlay.mediaUrl)}&time=${overlay.envTimeOfDay || 'noon'}&season=${overlay.envSeason || 'summer'}${overlay.hdriUrl ? `&hdri=${encodeURIComponent(overlay.hdriUrl)}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all hover:bg-black/50"
+            className="w-full h-full flex items-center justify-center transition-all group"
             style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
           >
-             <div className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-semibold text-sm shadow-2xl pointer-events-none">
+             <div className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-semibold text-sm shadow-2xl pointer-events-none group-hover:scale-105 transition-transform">
                <Box size={16} /> View 3D Space
              </div>
           </a>

@@ -123,7 +123,7 @@ function OverlayItem({
         );
       case 'model3d':
         return overlay.mediaUrl ? (
-          <div className="w-full h-full flex items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none" style={{ borderRadius: `${overlay.borderRadius || 0}px` }}>
+          <div className="w-full h-full flex items-center justify-center pointer-events-none" style={{ borderRadius: `${overlay.borderRadius || 0}px` }}>
              <button className="flex items-center gap-2 px-5 py-2.5 bg-accent text-black rounded-full font-semibold text-sm shadow-xl">
                <Box size={16} /> View 3D Space
              </button>
