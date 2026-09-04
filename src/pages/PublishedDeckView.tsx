@@ -311,7 +311,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
       <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '100dvh' }}>
         <div
-          className={`relative bg-black z-10 ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
+          className={`relative bg-black z-10 overflow-hidden ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
             width: '100%',
             maxWidth: `min(calc(100dvh * ${aspectRatio}), calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)))`,
@@ -321,10 +321,10 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
         >
           <div
             ref={imgRef}
-            className="relative w-full h-full"
+            className="relative w-full h-full overflow-hidden"
             style={{ backgroundColor: page.backgroundColor || undefined }}
           >
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 overflow-hidden">
               {placeholderSrc && (
                 page.backgroundType === 'video' ? (
                   <AutoPlayVideo src={placeholderSrc} className="w-full h-full object-cover select-none" />

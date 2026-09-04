@@ -134,7 +134,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
         return (
           <div
             key={`${img}-${idx}`}
-            className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none"
+            className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none overflow-hidden"
             style={{
               zIndex,
               opacity,
