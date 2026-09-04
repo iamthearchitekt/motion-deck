@@ -26,7 +26,7 @@ function StatusBadge({ status }: { status: DeckStatus }) {
   return <span className={cls}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
 }
 
-function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, onCopyLink }: {
+function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, onCopyLink, onEditDetails }: {
   deck: Deck;
   onOpen: () => void;
   onDuplicate: () => void;
@@ -34,6 +34,7 @@ function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, o
   onArchive: () => void;
   onPublish: () => void;
   onCopyLink: () => void;
+  onEditDetails: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -118,7 +119,10 @@ function DeckCard({ deck, onOpen, onDuplicate, onDelete, onArchive, onPublish, o
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 top-8 z-20 bg-surface-2 border border-border-default rounded-xl shadow-modal w-44 overflow-hidden animate-scale-in">
                   <button onClick={() => { onOpen(); setMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors">
-                    <Edit3 size={13} /> Open Editor
+                    <LayoutGrid size={13} /> Open Editor
+                  </button>
+                  <button onClick={() => { onEditDetails(); setMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors">
+                    <Edit3 size={13} /> Edit Details
                   </button>
                   <button onClick={() => { navigate(`/deck/${deck.slug}`); setMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors">
                     <Eye size={13} /> Preview
@@ -166,6 +170,7 @@ export default function DeckLibrary() {
   const navigate = useNavigate();
   const decks = useDecks();
   const [showNewModal, setShowNewModal] = useState(false);
+  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DeckStatus | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -183,6 +188,13 @@ export default function DeckLibrary() {
   const handleNew = async (data: Partial<Deck>) => {
     const id = await createDeck(data);
     navigate(`/editor/${id}`);
+  };
+
+  const handleEditSubmit = async (data: Partial<Deck>) => {
+    if (editingDeck) {
+      await updateDeck(editingDeck.id, data);
+      setEditingDeck(null);
+    }
   };
 
   const handleDuplicate = async (id: string) => {
@@ -289,6 +301,7 @@ export default function DeckLibrary() {
                   onArchive={() => archiveDeck(deck.id)}
                   onPublish={() => handlePublish(deck.id)}
                   onCopyLink={() => handleCopyLink(deck)}
+                  onEditDetails={() => setEditingDeck(deck)}
                 />
               </div>
             ))}
@@ -308,6 +321,15 @@ export default function DeckLibrary() {
 
       {showNewModal && (
         <NewDeckModal onClose={() => setShowNewModal(false)} onCreate={handleNew} />
+      )}
+      
+      {editingDeck && (
+        <NewDeckModal 
+          isEdit 
+          initial={editingDeck} 
+          onClose={() => setEditingDeck(null)} 
+          onCreate={handleEditSubmit} 
+        />
       )}
     </div>
   );

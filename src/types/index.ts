@@ -2,7 +2,7 @@
 
 export type DeckStatus = 'draft' | 'published' | 'archived';
 
-export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip' | 'melt';
+export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip' | 'melt' | 'model3d';
 
 export type TransitionStyle = 'none' | 'fade' | 'fadeUp';
 
@@ -24,7 +24,7 @@ export interface MediaItem {
   id: string;
   deckId: string;
   name: string;
-  type: 'gif' | 'mp4' | 'image';
+  type: 'gif' | 'mp4' | 'image' | 'model3d';
   /** Object URL or data URL for local preview */
   url: string;
   /** Stored as base64 for IndexedDB persistence */
@@ -50,6 +50,7 @@ export interface Overlay {
   opacity: number;
   borderRadius: number;
   visible: boolean;
+  locked?: boolean;
   label?: string;
 
   // Link / Button
@@ -59,6 +60,7 @@ export interface Overlay {
   buttonStyle?: 'solid' | 'outline' | 'ghost' | 'invisible';
   buttonColor?: string;
   textColor?: string;
+  buttonScale?: number;
 
   // Media (GIF / MP4)
   mediaId?: string;
@@ -83,6 +85,11 @@ export interface Overlay {
   // Flip-specific
   flipFrontUrl?: string;
   flipBackUrl?: string;
+
+  // 3D Model specific
+  envTimeOfDay?: 'morning' | 'noon' | 'sunset' | 'night';
+  envSeason?: 'spring' | 'summer' | 'autumn' | 'winter';
+  hdriUrl?: string;
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────

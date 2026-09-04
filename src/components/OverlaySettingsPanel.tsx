@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
+import { Trash2, Copy, Eye, EyeOff, X, ExternalLink, Upload, Maximize, ArrowUpToLine, ArrowDownToLine, MoveHorizontal, MoveVertical, Link, Image, Film, Move, Box, Lock, Unlock } from 'lucide-react';
 import type { DeckPage, Overlay } from '../types';
 import { updateOverlay, deleteOverlay, duplicateOverlay, addMedia, updatePage, uploadFile } from '../db/hooks';
 
@@ -7,6 +7,62 @@ interface Props {
   page: DeckPage;
   overlayId: string | null;
   deckId: string;
+  onSelectOverlay: (id: string | null) => void;
+}
+
+const OVERLAY_ICONS: Record<string, React.ReactNode> = {
+  link: <Link size={14} />,
+  image: <Image size={14} />,
+  gif: <Image size={14} />,
+  mp4: <Film size={14} />,
+  carousel: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>,
+  flip: <Move size={14} />,
+  model3d: <Box size={14} />,
+};
+
+function LayersList({ page, selectedOverlayId, onSelectOverlay }: { page: DeckPage, selectedOverlayId: string | null, onSelectOverlay: (id: string | null) => void }) {
+  const overlays = page.overlays || [];
+  return (
+    <div className="border-t border-border-default flex flex-col max-h-64 flex-shrink-0 bg-surface-2 shadow-2xl relative z-10">
+      <div className="px-4 py-2 border-b border-border-subtle font-semibold text-xs text-text-muted uppercase tracking-wider bg-surface-1">
+        Layers
+      </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {overlays.length === 0 ? (
+          <div className="p-4 text-center text-text-muted text-xs">No layers yet</div>
+        ) : (
+          [...overlays].reverse().map(overlay => (
+            <div 
+              key={overlay.id}
+              onClick={() => onSelectOverlay(overlay.id)}
+              className={`flex items-center gap-2 px-4 py-2 cursor-pointer border-b border-border-subtle/50 transition-colors ${selectedOverlayId === overlay.id ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-3 border-l-2 border-l-transparent'}`}
+            >
+              <div className="text-text-muted flex-shrink-0">{OVERLAY_ICONS[overlay.type]}</div>
+              <div className="flex-1 text-xs truncate text-text-primary">
+                {overlay.label || overlay.type.toUpperCase()}
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); updateOverlay(page.id, overlay.id, { locked: !overlay.locked }); }}
+                  className={`p-1 rounded hover:bg-surface-4 ${overlay.locked ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+                  title={overlay.locked ? "Unlock layer" : "Lock layer"}
+                >
+                  {overlay.locked ? <Lock size={12} /> : <Unlock size={12} />}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); updateOverlay(page.id, overlay.id, { visible: !overlay.visible }); }}
+                  className={`p-1 rounded hover:bg-surface-4 ${!overlay.visible ? 'text-text-muted opacity-50' : 'text-text-primary'}`}
+                  title={overlay.visible ? "Hide layer" : "Show layer"}
+                >
+                  {overlay.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 function NumberInput({ label, value, onChange, min = 0, max = 100, step = 0.5, unit = '%' }: {
@@ -75,13 +131,14 @@ function formatUrl(url?: string) {
   return url;
 }
 
-export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props) {
+export default function OverlaySettingsPanel({ page, overlayId, deckId, onSelectOverlay }: Props) {
   const overlay = overlayId ? (page.overlays || []).find(o => o.id === overlayId) : null;
   const mediaRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLInputElement>(null);
   const meltRef = useRef<HTMLInputElement>(null);
   const flipFrontRef = useRef<HTMLInputElement>(null);
   const flipBackRef = useRef<HTMLInputElement>(null);
+  const hdriRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const update = useCallback((changes: Partial<Overlay>) => {
@@ -122,7 +179,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const handleMediaUpload = async (file: File) => {
     setIsUploading(true);
     try {
-      const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : 'mp4';
+      const type = file.type.includes('gif') ? 'gif' : file.type.includes('image') ? 'image' : file.name.endsWith('.glb') || file.name.endsWith('.gltf') ? 'model3d' : 'mp4';
       const publicUrl = await uploadFile(file, deckId);
       const mediaId = await addMedia({
         deckId,
@@ -180,12 +237,14 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
             </div>
           )}
         </div>
+        <LayersList page={page} selectedOverlayId={overlayId} onSelectOverlay={onSelectOverlay} />
       </div>
     );
   }
 
   return (
-    <div className="sidebar-panel w-64 flex-shrink-0 overflow-y-auto">
+    <div className="sidebar-panel w-64 flex-shrink-0 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto flex flex-col custom-scrollbar">
       <div className="sidebar-header">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider capitalize">
           {overlay.type === 'melt' ? 'Picture Fade Slideshow' : `${overlay.type} Overlay`}
@@ -230,15 +289,32 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
               Send to Back
             </button>
           </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => update({ x: (100 - (overlay.width || 0)) / 2 })}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <MoveHorizontal size={14} />
+              Center Horiz.
+            </button>
+            <button
+              onClick={() => update({ y: (100 - (overlay.height || 0)) / 2 })}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
+            >
+              <MoveVertical size={14} />
+              Center Vert.
+            </button>
+          </div>
         </div>
 
         {/* Label */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && overlay.type !== 'model3d' && (
           <TextInput label="Label" value={overlay.label || ''} onChange={v => update({ label: v })} placeholder="Optional label..." />
         )}
 
         {/* Position & Size */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && overlay.type !== 'model3d' && (
           <div>
             <p className="field-label mb-2">Position & Size</p>
             <div className="grid grid-cols-2 gap-2">
@@ -251,7 +327,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         )}
 
         {/* Appearance */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && overlay.type !== 'model3d' && (
           <div>
             <p className="field-label mb-2">Appearance</p>
             <div className="space-y-2">
@@ -308,14 +384,19 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           </div>
         )}
 
-        {/* ── GIF / MP4 / Image Media ── */}
-        {(overlay.type === 'gif' || overlay.type === 'mp4' || overlay.type === 'image') && (
+        {/* ── GIF / MP4 / Image / 3D Media ── */}
+        {(overlay.type === 'gif' || overlay.type === 'mp4' || overlay.type === 'image' || overlay.type === 'model3d') && (
           <div>
             <p className="field-label mb-2">Media</p>
             {overlay.mediaUrl ? (
               <div className="rounded-lg overflow-hidden bg-surface-3 relative group">
                 {overlay.type === 'gif' || overlay.type === 'image' ? (
                   <img src={overlay.mediaUrl} alt="Media" className="w-full h-24" style={{ objectFit: 'contain' }} />
+                ) : overlay.type === 'model3d' ? (
+                  <div className="w-full h-24 flex flex-col items-center justify-center text-text-muted gap-2">
+                     <span className="text-xs font-mono">{overlay.mediaUrl.split('/').pop()}</span>
+                     <span className="text-[10px]">3D Model Ready</span>
+                  </div>
                 ) : (
                   <video src={overlay.mediaUrl} className="w-full h-24" style={{ objectFit: 'contain' }} muted playsInline />
                 )}
@@ -333,10 +414,115 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
                 className={`w-full border border-dashed rounded-lg py-4 flex flex-col items-center gap-2 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
               >
                 <Upload size={16} />
-                <span className="text-xs">{isUploading ? 'Uploading...' : `Upload ${overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : 'MP4'}`}</span>
+                <span className="text-xs">{isUploading ? 'Uploading...' : `Upload ${overlay.type === 'gif' ? 'GIF' : overlay.type === 'image' ? 'Image' : overlay.type === 'model3d' ? '3D Model (.glb)' : 'MP4'}`}</span>
               </button>
             )}
             <p className="text-[10px] text-text-muted mt-2">Drag corners on canvas to scale. Maintains natural aspect ratio.</p>
+          </div>
+        )}
+        
+        {/* ── 3D Model Settings ── */}
+        {overlay.type === 'model3d' && (
+          <div>
+            <p className="field-label mb-2 mt-4">Environment Vibe</p>
+            <div className="space-y-3">
+              <div className="field-group">
+                <label className="field-label">Time of Day</label>
+                <select 
+                  value={overlay.envTimeOfDay || 'noon'} 
+                  onChange={e => update({ envTimeOfDay: e.target.value as any })} 
+                  className="w-full"
+                >
+                  <option value="morning">Morning</option>
+                  <option value="noon">Noon</option>
+                  <option value="sunset">Sunset / Golden Hour</option>
+                  <option value="night">Night</option>
+                </select>
+              </div>
+              <div className="field-group">
+                <label className="field-label">Season</label>
+                <select 
+                  value={overlay.envSeason || 'summer'} 
+                  onChange={e => update({ envSeason: e.target.value as any })} 
+                  className="w-full"
+                >
+                  <option value="spring">Spring</option>
+                  <option value="summer">Summer</option>
+                  <option value="autumn">Autumn</option>
+                  <option value="winter">Winter</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-[10px] text-text-muted mt-2">These settings dynamically change the default lighting and tone.</p>
+            
+            <div className="mt-4 pt-4 border-t border-border-default">
+              <p className="field-label mb-2">Custom HDRI Skybox (Optional)</p>
+              {overlay.hdriUrl ? (
+                <div className="rounded-lg overflow-hidden bg-surface-3 relative group h-12 flex items-center justify-center">
+                  <span className="text-xs font-mono truncate px-2 text-text-muted">{overlay.hdriUrl.split('/').pop()}</span>
+                  <button
+                    onClick={() => hdriRef.current?.click()}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-medium transition-opacity"
+                  >
+                    Replace HDRI
+                  </button>
+                  <button
+                    onClick={() => update({ hdriUrl: undefined })}
+                    className="absolute right-1 top-1 p-1 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => hdriRef.current?.click()}
+                  disabled={isUploading}
+                  className={`w-full border border-dashed rounded-lg py-3 flex flex-col items-center gap-1 transition-all ${isUploading ? 'border-border-default opacity-50 cursor-not-allowed' : 'border-border-default text-text-muted hover:border-accent hover:text-accent'}`}
+                >
+                  <Upload size={14} />
+                  <span className="text-xs">Upload .hdr / .exr / .jpg Skybox</span>
+                </button>
+              )}
+              <p className="text-[10px] text-text-muted mt-2">Uploading a custom skybox overrides the Season/Time preset environment.</p>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border-default">
+              <p className="field-label mb-2">Button Appearance</p>
+              <div className="space-y-3">
+                <div className="field-group">
+                  <label className="field-label">Button Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color" 
+                      value={overlay.buttonColor || '#ffffff'} 
+                      onChange={e => update({ buttonColor: e.target.value })} 
+                      className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent" 
+                    />
+                    <input 
+                      value={overlay.buttonColor || '#ffffff'} 
+                      onChange={e => update({ buttonColor: e.target.value })} 
+                      className="flex-1 font-mono text-xs" 
+                    />
+                  </div>
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Text Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="color" 
+                      value={overlay.textColor || '#000000'} 
+                      onChange={e => update({ textColor: e.target.value })} 
+                      className="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent" 
+                    />
+                    <input 
+                      value={overlay.textColor || '#000000'} 
+                      onChange={e => update({ textColor: e.target.value })} 
+                      className="flex-1 font-mono text-xs" 
+                    />
+                  </div>
+                </div>
+                <NumberInput label="Button Scale" value={overlay.buttonScale || 1} onChange={v => update({ buttonScale: v })} min={0.5} max={5} step={0.1} unit="x" />
+              </div>
+            </div>
           </div>
         )}
         {/* ── Carousel ── */}
@@ -623,7 +809,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
       <input
         ref={mediaRef}
         type="file"
-        accept={overlay.type === 'gif' ? 'image/gif' : overlay.type === 'image' ? 'image/png,image/jpeg,image/webp' : 'video/mp4,video/*'}
+        accept={overlay.type === 'gif' ? 'image/gif' : overlay.type === 'image' ? 'image/png,image/jpeg,image/webp' : overlay.type === 'model3d' ? '.glb,.gltf' : 'video/mp4,video/*'}
         className="hidden"
         onChange={e => e.target.files?.[0] && handleMediaUpload(e.target.files[0])}
       />
@@ -663,6 +849,29 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
           }
         }}
       />
+      
+      <input
+        ref={hdriRef}
+        type="file"
+        accept=".hdr,.exr,image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={async e => {
+          if (!e.target.files?.[0]) return;
+          setIsUploading(true);
+          try {
+            const publicUrl = await uploadFile(e.target.files[0], deckId);
+            update({ hdriUrl: publicUrl });
+          } catch (err: any) {
+            console.error('HDRI Upload Error:', err);
+            alert(`HDRI Upload failed: ${err.message || 'Unknown error'}. Check if your database allows this file type and size.`);
+          } finally {
+            setIsUploading(false);
+            if (hdriRef.current) hdriRef.current.value = '';
+          }
+        }}
+      />
+      </div>
+      <LayersList page={page} selectedOverlayId={overlayId} onSelectOverlay={onSelectOverlay} />
     </div>
   );
 }

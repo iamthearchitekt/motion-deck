@@ -165,7 +165,9 @@ export function usePages(deckId: string | undefined) {
 }
 
 export async function uploadFile(file: File, pathPrefix: string): Promise<string> {
-  const filePath = `${pathPrefix}/${uuidv4()}-${Date.now()}`;
+  // Extract extension from file.name
+  const ext = file.name.split('.').pop();
+  const filePath = `${pathPrefix}/${uuidv4()}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('motion-deck-assets').upload(filePath, file);
   if (error) {
     console.error('Error uploading file:', error);

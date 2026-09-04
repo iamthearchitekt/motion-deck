@@ -7,9 +7,10 @@ interface Props {
   onClose: () => void;
   onCreate: (data: Partial<Deck>) => void;
   initial?: Partial<Deck>;
+  isEdit?: boolean;
 }
 
-export default function NewDeckModal({ onClose, onCreate, initial }: Props) {
+export default function NewDeckModal({ onClose, onCreate, initial, isEdit }: Props) {
   const [form, setForm] = useState<Partial<Deck>>({
     title: '',
     clientName: '',
@@ -35,7 +36,7 @@ export default function NewDeckModal({ onClose, onCreate, initial }: Props) {
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-content w-full max-w-lg mx-4">
         <div className="flex items-center justify-between px-6 py-5 border-b border-border-subtle">
-          <h2 className="text-base font-bold text-text-primary">New Deck</h2>
+          <h2 className="text-base font-bold text-text-primary">{isEdit ? 'Edit Deck Details' : 'New Deck'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors">
             <X size={16} />
           </button>
@@ -106,7 +107,7 @@ export default function NewDeckModal({ onClose, onCreate, initial }: Props) {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" className="btn-primary flex-1">Create Deck</button>
+            <button type="submit" className="btn-primary flex-1">{isEdit ? 'Save Changes' : 'Create Deck'}</button>
           </div>
         </form>
       </div>

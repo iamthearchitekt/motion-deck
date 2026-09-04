@@ -333,6 +333,7 @@ export default function DeckEditor() {
             page={selectedPage}
             overlayId={selectedOverlayId}
             deckId={deck.id}
+            onSelectOverlay={setSelectedOverlayId}
           />
         )}
       </div>

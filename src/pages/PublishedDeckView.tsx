@@ -9,6 +9,7 @@ import PageNavigationControls from '../components/PageNavigationControls';
 import CarouselPlayer from '../components/CarouselPlayer';
 import MeltGalleryPlayer from '../components/MeltGalleryPlayer';
 import { makePlaceholderPage } from '../data/sampleDeck';
+import { Box } from 'lucide-react';
 
 function formatUrl(url?: string) {
   if (!url) return '#';
@@ -16,6 +17,133 @@ function formatUrl(url?: string) {
     return 'https://' + url;
   }
   return url;
+}
+
+// Global flag: has the user interacted with the page yet?
+// iOS Safari requires a user gesture before allowing video playback.
+let _userHasInteracted = false;
+const _interactionListeners: Set<() => void> = new Set();
+
+if (typeof window !== 'undefined') {
+  const markInteracted = () => {
+    if (_userHasInteracted) return;
+    _userHasInteracted = true;
+    _interactionListeners.forEach(fn => fn());
+    _interactionListeners.clear();
+    window.removeEventListener('touchstart', markInteracted, true);
+    window.removeEventListener('click', markInteracted, true);
+    window.removeEventListener('scroll', markInteracted, true);
+  };
+  window.addEventListener('touchstart', markInteracted, { capture: true, passive: true });
+  window.addEventListener('click', markInteracted, { capture: true });
+  window.addEventListener('scroll', markInteracted, { capture: true, passive: true });
+}
+
+function useUserInteracted() {
+  const [interacted, setInteracted] = useState(_userHasInteracted);
+  useEffect(() => {
+    if (_userHasInteracted) { setInteracted(true); return; }
+    const cb = () => setInteracted(true);
+    _interactionListeners.add(cb);
+    return () => { _interactionListeners.delete(cb); };
+  }, []);
+  return interacted;
+}
+
+function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(poster || null);
+  const userInteracted = useUserInteracted();
+  
+  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const showVideo = !isMobile || userInteracted;
+
+  // On mobile, extract first frame as a thumbnail before the user interacts
+  useEffect(() => {
+    if (!isMobile || poster || !src) return;
+    
+    // Create an offscreen video to grab the first frame
+    const offscreen = document.createElement('video');
+    offscreen.crossOrigin = 'anonymous';
+    offscreen.muted = true;
+    offscreen.playsInline = true;
+    offscreen.preload = 'metadata';
+    offscreen.src = src;
+    
+    const grabFrame = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = offscreen.videoWidth || 640;
+        canvas.height = offscreen.videoHeight || 360;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+          setThumbnailUrl(canvas.toDataURL('image/jpeg', 0.8));
+        }
+      } catch { /* CORS may block this — that's fine, we'll just show black */ }
+      offscreen.removeEventListener('seeked', grabFrame);
+      offscreen.src = '';
+    };
+    
+    offscreen.addEventListener('loadeddata', () => {
+      offscreen.currentTime = 0.1; // seek to get a frame
+    });
+    offscreen.addEventListener('seeked', grabFrame);
+    offscreen.load();
+    
+    return () => { offscreen.src = ''; };
+  }, [src, poster, isMobile]);
+
+  // Once we show the real video, force play
+  useEffect(() => {
+    if (!showVideo || !videoRef.current) return;
+    const v = videoRef.current;
+    v.muted = true;
+    const p = v.play();
+    if (p) p.catch(() => {});
+  }, [showVideo, src]);
+
+  // Mobile: show static thumbnail until user interacts
+  if (!showVideo) {
+    return (
+      <div
+        className={`relative w-full h-full ${className || ''}`}
+        style={{ ...style, backgroundColor: '#000' }}
+        onClick={onClick}
+      >
+        {thumbnailUrl && (
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className="w-full h-full"
+            style={{ objectFit: style?.objectFit || 'cover' }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Desktop (always) or Mobile (after interaction): render real video
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster}
+      className={className}
+      style={style}
+      autoPlay
+      loop
+      muted
+      playsInline
+      controls={false}
+      onClick={(e) => {
+        const v = e.target as HTMLVideoElement;
+        if (v.paused) v.play();
+        else v.pause();
+        if (onClick) onClick(e);
+      }}
+    />
+  );
 }
 
 function PublishedOverlay({ overlay }: {
@@ -69,13 +197,8 @@ function PublishedOverlay({ overlay }: {
 
       case 'mp4':
         return overlay.mediaUrl ? (
-          <video
+          <AutoPlayVideo
             src={overlay.mediaUrl}
-            autoPlay
-            loop
-            muted
-            controls={false}
-            playsInline
             style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }}
             poster={overlay.posterUrl}
           />
@@ -108,6 +231,31 @@ function PublishedOverlay({ overlay }: {
           </a>
         );
       }
+
+      case 'model3d':
+        return overlay.mediaUrl ? (
+          <a
+            href={`/viewer?url=${encodeURIComponent(overlay.mediaUrl)}&time=${overlay.envTimeOfDay || 'noon'}&season=${overlay.envSeason || 'summer'}${overlay.hdriUrl ? `&hdri=${encodeURIComponent(overlay.hdriUrl)}` : ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full h-full flex items-center justify-center transition-all group"
+            style={{ borderRadius: `${overlay.borderRadius || 0}px`, textDecoration: 'none' }}
+          >
+             <div 
+               className="flex items-center justify-center rounded-full font-bold shadow-2xl pointer-events-none group-hover:scale-[1.05] transition-transform whitespace-nowrap"
+               style={{
+                 backgroundColor: overlay.buttonColor || '#ffffff',
+                 color: overlay.textColor || '#000000',
+                 scale: overlay.buttonScale || 1,
+                 fontSize: '2.25cqw',
+                 padding: '1.25cqw 2.5cqw',
+                 gap: '0.75cqw'
+               }}
+             >
+               <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
+             </div>
+          </a>
+        ) : null;
 
       case 'carousel':
         return <CarouselPlayer overlay={overlay} />;
@@ -161,13 +309,14 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
 
   return (
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
-      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden">
+      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '100dvh' }}>
         <div
           className={`relative bg-black z-10 ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
             width: '100%',
-            maxWidth: `min(100vw, calc(100dvh * ${aspectRatio}))`,
+            maxWidth: `min(calc(100dvh * ${aspectRatio}), calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)))`,
             aspectRatio: `${aspectRatio}`,
+            containerType: 'inline-size'
           }}
         >
           <div
@@ -178,7 +327,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
             <div className="absolute inset-0">
               {placeholderSrc && (
                 page.backgroundType === 'video' ? (
-                  <video src={placeholderSrc} className="w-full h-full object-cover select-none" autoPlay loop muted playsInline />
+                  <AutoPlayVideo src={placeholderSrc} className="w-full h-full object-cover select-none" />
                 ) : (
                   <img src={placeholderSrc} alt={page.title} className="w-full h-full object-cover select-none" draggable={false} />
                 )
@@ -241,7 +390,7 @@ export default function PublishedDeckView() {
 
   if (notFound || (!deck && !deckId)) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+      <div className="bg-black flex flex-col items-center justify-center gap-4" style={{ minHeight: '100dvh' }}>
         <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 mb-2" />
         <p style={{ color: '#444', fontSize: 14 }}>Deck not found.</p>
       </div>
@@ -250,7 +399,7 @@ export default function PublishedDeckView() {
 
   if (!deck || !pages) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+      <div className="bg-black flex flex-col items-center justify-center gap-6" style={{ minHeight: '100dvh' }}>
         <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-8 w-auto opacity-30 animate-pulse" />
         <div className="w-5 h-5 border-2 border-[#333] border-t-accent rounded-full animate-spin"></div>
       </div>
@@ -259,7 +408,7 @@ export default function PublishedDeckView() {
 
   if (pages.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+      <div className="bg-black flex flex-col items-center justify-center gap-4" style={{ minHeight: '100dvh' }}>
         <p className="text-gray-500 text-sm">This deck has no pages yet.</p>
       </div>
     );
@@ -270,7 +419,7 @@ export default function PublishedDeckView() {
   const aspectRatio = deck ? SLIDE_SIZES[deck.slideSize || '16:9'].aspectRatio : 16 / 9;
 
   return (
-    <div className="min-h-screen bg-surface-3 relative">
+    <div className="bg-surface-3 relative" style={{ minHeight: '100dvh' }}>
       {/* Global Fixed Background Branding */}
       {isVertical && deck?.showPaddingBranding && brandingImageUrl && (
         <div className="fixed inset-0 flex pointer-events-none z-0">
@@ -285,12 +434,13 @@ export default function PublishedDeckView() {
       )}
 
       {/* Deck pages */}
-      <div className="flex flex-col relative z-10">
+      <div className="flex flex-col relative z-10" style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}>
         {pages.map((page: DeckPage, i: number) => (
           <div
             key={page.id}
             ref={el => { pageRefs.current[i] = el; }}
             id={`page-${i}`}
+            style={{ scrollSnapAlign: 'start' }}
           >
             <PublishedPage
               deck={deck}
@@ -302,10 +452,6 @@ export default function PublishedDeckView() {
         ))}
       </div>
 
-      {/* Subtle branding */}
-      <div className="fixed top-4 left-4 z-30 opacity-40 hover:opacity-80 transition-opacity">
-        <img src="/motion-deck-logo.png" alt="Motion Deck" className="h-5 w-auto" />
-      </div>
 
       {/* Navigation controls */}
       <PageNavigationControls

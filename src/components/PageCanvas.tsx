@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Link, Image, Film, MousePointer, Plus, Move, Sparkles } from 'lucide-react';
+import { Link, Image, Film, MousePointer, Plus, Move, Sparkles, Box } from 'lucide-react';
 import type { Deck, DeckPage, Overlay, OverlayType } from '../types';
 import { SLIDE_SIZES } from '../types';
 import { addOverlay, updateOverlay } from '../db/hooks';
@@ -22,6 +22,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ReactNode> = {
   carousel: <div className="flex -space-x-2"><Image size={16}/><Image size={16}/></div>,
   melt: <Sparkles size={16} />,
   flip: <Move size={16} />,
+  model3d: <Box size={16} />,
 };
 
 const OVERLAY_COLORS: Record<OverlayType, string> = {
@@ -32,6 +33,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   carousel: '#8b5cf6',
   melt: '#c9a251',
   flip: '#ec4899',
+  model3d: '#06b6d4',
 };
 
 function OverlayItem({
@@ -133,6 +135,29 @@ function OverlayItem({
             <span className="text-[10px] font-medium uppercase" style={{ color }}>FLIP CARD</span>
           </div>
         );
+      case 'model3d':
+        return overlay.mediaUrl ? (
+          <div className="w-full h-full flex items-center justify-center pointer-events-none" style={{ borderRadius: `${overlay.borderRadius || 0}px` }}>
+             <div 
+               className="flex items-center justify-center rounded-full font-bold shadow-xl whitespace-nowrap"
+               style={{
+                 backgroundColor: overlay.buttonColor || '#ffffff',
+                 color: overlay.textColor || '#000000',
+                 scale: overlay.buttonScale || 1,
+                 fontSize: '2.25cqw',
+                 padding: '1.25cqw 2.5cqw',
+                 gap: '0.75cqw'
+               }}
+             >
+               <Box style={{ width: '1.2em', height: '1.2em' }} /> View 3D Space
+             </div>
+          </div>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
+            <Box size={20} style={{ color }} />
+            <span className="text-[10px] font-medium uppercase" style={{ color }}>3D MODEL</span>
+          </div>
+        );
       default: // link
         return overlay.label ? (
           <div className="w-full h-full flex items-center justify-center">
@@ -143,13 +168,13 @@ function OverlayItem({
   };
 
   const getBg = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt') return 'transparent';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt' || overlay.type === 'model3d') return 'transparent';
     if (overlay.type === 'link' && overlay.buttonStyle === 'invisible') return 'transparent';
     return `${color}18`;
   };
 
   const getBorder = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt') return isSelected ? `2px solid ${color}` : 'none';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt' || overlay.type === 'model3d') return isSelected ? `2px solid ${color}` : 'none';
     return isSelected ? `2px solid ${color}` : `1px dashed ${color}60`;
   };
 
@@ -186,9 +211,9 @@ function OverlayItem({
           height: (el.offsetHeight / containerHeight) * 100,
         });
       }}
-      enableResizing={isSelected}
-      disableDragging={false}
-      style={{ zIndex: isSelected ? 20 : 10 }}
+      enableResizing={isSelected && !overlay.locked}
+      disableDragging={overlay.locked}
+      style={{ zIndex: isSelected ? 20 : 10, pointerEvents: overlay.locked ? 'none' : 'auto' }}
     >
       <div
         className="select-none"
@@ -249,7 +274,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
 
   const handleAddOverlay = async (type: OverlayType) => {
     setShowAddMenu(false);
-    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip' || type === 'melt';
+    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip' || type === 'melt' || type === 'model3d';
     const defaults: Omit<Overlay, 'id' | 'pageId'> = {
       type,
       // Media overlays spawn centered
@@ -285,6 +310,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
     { type: 'carousel', label: 'Image Carousel', icon: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>, desc: 'Scrollable image gallery' },
     { type: 'melt', label: 'Picture Fade Slideshow', icon: <Sparkles size={14} />, desc: 'Slow melt transition between photos' },
     { type: 'flip', label: 'Flip Card', icon: <Move size={14} />, desc: 'Interactive double-sided image' },
+    { type: 'model3d', label: '3D Space', icon: <Box size={14} />, desc: 'Interactive 3D model viewer' },
   ];
 
   return (
@@ -313,7 +339,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
         <div
           ref={observeSize}
           className="relative w-full overflow-hidden"
-          style={{ paddingBottom: `${(1 / aspectRatio) * 100}%` }}
+          style={{ paddingBottom: `${(1 / aspectRatio) * 100}%`, containerType: 'inline-size' }}
         >
           <div className="absolute inset-0 bg-surface-3" style={{ backgroundColor: page.backgroundColor || undefined }}>
             {placeholderSrc ? (
