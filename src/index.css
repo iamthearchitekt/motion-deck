@@ -161,6 +161,38 @@ button { cursor: pointer; font-family: inherit; }
   .deck-page-fade, .deck-page-fade-up { transition: none !important; opacity: 1 !important; transform: none !important; }
 }
 
+/* ── Published Deck View Responsive Stacking & Snap ── */
+.deck-slides-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+  -webkit-overflow-scrolling: touch;
+}
+
+.deck-slide-page-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px), (orientation: landscape) {
+  .deck-slides-container {
+    scroll-snap-type: y mandatory;
+  }
+  .deck-slide-snap-item {
+    scroll-snap-align: start;
+  }
+  .deck-slide-page-wrapper {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
+
 /* ── Overlay handle ───────────────────────────────────────────────────── */
 .overlay-handle { position: absolute; width: 8px; height: 8px; background: #c9a251; border: 1px solid #fff; border-radius: 2px; z-index: 10; }
 

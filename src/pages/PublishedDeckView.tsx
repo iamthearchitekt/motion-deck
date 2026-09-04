@@ -309,7 +309,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
 
   return (
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
-      <div className="w-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '100dvh' }}>
+      <div className="deck-slide-page-wrapper">
         <div
           className={`relative bg-black z-10 overflow-hidden ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
@@ -434,13 +434,13 @@ export default function PublishedDeckView() {
       )}
 
       {/* Deck pages */}
-      <div className="flex flex-col relative z-10" style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}>
+      <div className="deck-slides-container">
         {pages.map((page: DeckPage, i: number) => (
           <div
             key={page.id}
             ref={el => { pageRefs.current[i] = el; }}
             id={`page-${i}`}
-            style={{ scrollSnapAlign: 'start' }}
+            className="deck-slide-snap-item"
           >
             <PublishedPage
               deck={deck}
