@@ -266,7 +266,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId, onSelect
         {/* Layout Shortcuts */}
         <div className="space-y-2">
           <button
-            onClick={() => update({ x: 0, y: 0, width: 100, height: 100 })}
+            onClick={() => update({ x: 0, y: 0, width: 100, height: 100, borderRadius: 0, fitMode: 'cover' })}
             className="w-full flex items-center justify-center gap-2 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded text-xs font-medium border border-border-default hover:border-border-subtle transition-all"
           >
             <Maximize size={14} />

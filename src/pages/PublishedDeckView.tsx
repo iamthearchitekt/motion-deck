@@ -19,111 +19,99 @@ function formatUrl(url?: string) {
   return url;
 }
 
-// Global flag: has the user interacted with the page yet?
-// iOS Safari requires a user gesture before allowing video playback.
-let _userHasInteracted = false;
-const _interactionListeners: Set<() => void> = new Set();
-
-if (typeof window !== 'undefined') {
-  const markInteracted = () => {
-    if (_userHasInteracted) return;
-    _userHasInteracted = true;
-    _interactionListeners.forEach(fn => fn());
-    _interactionListeners.clear();
-    window.removeEventListener('touchstart', markInteracted, true);
-    window.removeEventListener('click', markInteracted, true);
-    window.removeEventListener('scroll', markInteracted, true);
-  };
-  window.addEventListener('touchstart', markInteracted, { capture: true, passive: true });
-  window.addEventListener('click', markInteracted, { capture: true });
-  window.addEventListener('scroll', markInteracted, { capture: true, passive: true });
-}
-
-function useUserInteracted() {
-  const [interacted, setInteracted] = useState(_userHasInteracted);
-  useEffect(() => {
-    if (_userHasInteracted) { setInteracted(true); return; }
-    const cb = () => setInteracted(true);
-    _interactionListeners.add(cb);
-    return () => { _interactionListeners.delete(cb); };
-  }, []);
-  return interacted;
-}
-
 function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(poster || null);
-  const userInteracted = useUserInteracted();
-  
-  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  const showVideo = !isMobile || userInteracted;
+  const isIntersectingRef = useRef(false);
+  const manuallyPausedRef = useRef(false);
 
-  // On mobile, extract first frame as a thumbnail before the user interacts
   useEffect(() => {
-    if (!isMobile || poster || !src) return;
-    
-    // Create an offscreen video to grab the first frame
-    const offscreen = document.createElement('video');
-    offscreen.crossOrigin = 'anonymous';
-    offscreen.muted = true;
-    offscreen.playsInline = true;
-    offscreen.preload = 'metadata';
-    offscreen.src = src;
-    
-    const grabFrame = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = offscreen.videoWidth || 640;
-        canvas.height = offscreen.videoHeight || 360;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
-          setThumbnailUrl(canvas.toDataURL('image/jpeg', 0.8));
-        }
-      } catch { /* CORS may block this — that's fine, we'll just show black */ }
-      offscreen.removeEventListener('seeked', grabFrame);
-      offscreen.src = '';
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Strict muted flags required by WebKit / iOS Safari for autoplay
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('x5-playsinline', '');
+
+    const playSafe = () => {
+      if (!videoRef.current || manuallyPausedRef.current || !isIntersectingRef.current) return;
+      videoRef.current.muted = true;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // If autoplay was rejected (e.g. low power mode or pre-gesture requirement),
+          // retry automatically on the very first user interaction (touch/scroll)
+          const onFirstInteraction = () => {
+            if (videoRef.current && isIntersectingRef.current && !manuallyPausedRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().catch(() => {});
+            }
+          };
+          window.addEventListener('touchstart', onFirstInteraction, { once: true, passive: true });
+          window.addEventListener('touchend', onFirstInteraction, { once: true, passive: true });
+          window.addEventListener('click', onFirstInteraction, { once: true });
+          window.addEventListener('scroll', onFirstInteraction, { once: true, passive: true });
+        });
+      }
     };
-    
-    offscreen.addEventListener('loadeddata', () => {
-      offscreen.currentTime = 0.1; // seek to get a frame
-    });
-    offscreen.addEventListener('seeked', grabFrame);
-    offscreen.load();
-    
-    return () => { offscreen.src = ''; };
-  }, [src, poster, isMobile]);
 
-  // Once we show the real video, force play
-  useEffect(() => {
-    if (!showVideo || !videoRef.current) return;
-    const v = videoRef.current;
-    v.muted = true;
-    const p = v.play();
-    if (p) p.catch(() => {});
-  }, [showVideo, src]);
+    const pauseSafe = () => {
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+    };
 
-  // Mobile: show static thumbnail until user interacts
-  if (!showVideo) {
-    return (
-      <div
-        className={`relative w-full h-full ${className || ''}`}
-        style={{ ...style, backgroundColor: '#000' }}
-        onClick={onClick}
-      >
-        {thumbnailUrl && (
-          <img
-            src={thumbnailUrl}
-            alt=""
-            className="w-full h-full"
-            style={{ objectFit: style?.objectFit || 'cover' }}
-          />
-        )}
-      </div>
+    // Viewport-aware playback observer
+    // rootMargin: '150px 0px 150px 0px' prepares/plays slightly before scrolling into view,
+    // and immediately pauses when offscreen to release iOS hardware video decoders (limit 3-4).
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          isIntersectingRef.current = entry.isIntersecting;
+          if (entry.isIntersecting) {
+            playSafe();
+          } else {
+            manuallyPausedRef.current = false;
+            pauseSafe();
+          }
+        }
+      },
+      {
+        threshold: 0.05,
+        rootMargin: '150px 0px 150px 0px',
+      }
     );
-  }
 
-  // Desktop (always) or Mobile (after interaction): render real video
+    observer.observe(video);
+
+    const onCanPlay = () => {
+      if (isIntersectingRef.current && !manuallyPausedRef.current && videoRef.current?.paused) {
+        playSafe();
+      }
+    };
+    video.addEventListener('canplay', onCanPlay);
+
+    // Tab visibility handling
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isIntersectingRef.current) {
+        playSafe();
+      } else if (document.visibilityState === 'hidden') {
+        pauseSafe();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      observer.disconnect();
+      video.removeEventListener('canplay', onCanPlay);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      pauseSafe();
+    };
+  }, [src]);
+
   return (
     <video
       ref={videoRef}
@@ -135,11 +123,17 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
       loop
       muted
       playsInline
+      preload="metadata"
       controls={false}
       onClick={(e) => {
-        const v = e.target as HTMLVideoElement;
-        if (v.paused) v.play();
-        else v.pause();
+        const v = e.currentTarget;
+        if (v.paused) {
+          manuallyPausedRef.current = false;
+          v.play().catch(() => {});
+        } else {
+          manuallyPausedRef.current = true;
+          v.pause();
+        }
         if (onClick) onClick(e);
       }}
     />
@@ -153,14 +147,19 @@ function PublishedOverlay({ overlay }: {
 
   if (!overlay.visible) return null;
 
+  // Full-slide frame templates cover the entire page
+  const isFullSlide = overlay.x <= 1 && overlay.y <= 1 && overlay.width >= 98 && overlay.height >= 98;
+
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: `${overlay.x}%`,
-    top: `${overlay.y}%`,
-    width: `${overlay.width}%`,
-    height: `${overlay.height}%`,
+    // 1px bleed for full-slide frames completely eliminates mobile subpixel gaps along the edges
+    left: isFullSlide ? '-1px' : `${overlay.x}%`,
+    top: isFullSlide ? '-1px' : `${overlay.y}%`,
+    width: isFullSlide ? 'calc(100% + 2px)' : `${overlay.width}%`,
+    height: isFullSlide ? 'calc(100% + 2px)' : `${overlay.height}%`,
     opacity: overlay.opacity,
-    borderRadius: `${overlay.borderRadius}px`,
+    // Full-slide frames must never have rounded corners that expose videos underneath
+    borderRadius: isFullSlide ? '0px' : `${overlay.borderRadius || 0}px`,
     overflow: overlay.type === 'flip' ? 'visible' : 'hidden',
   };
 
@@ -192,7 +191,18 @@ function PublishedOverlay({ overlay }: {
       case 'image':
       case 'gif':
         return overlay.mediaUrl ? (
-          <img src={overlay.mediaUrl} alt={overlay.label || ''} style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }} />
+          <img
+            src={overlay.mediaUrl}
+            alt={overlay.label || ''}
+            style={{
+              width: '100%',
+              height: '100%',
+              // Full slide overlays use cover so subpixel rounding cannot leave empty gaps
+              objectFit: isFullSlide ? 'cover' : (overlay.fitMode || 'contain'),
+              display: 'block',
+              pointerEvents: isFullSlide ? 'none' : undefined,
+            }}
+          />
         ) : null;
 
       case 'mp4':
@@ -278,21 +288,6 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
   transitionStyle: any;
   transitionSpeed: any;
 }) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const imgRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!imgRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      for (const e of entries) {
-        setSize({ width: e.contentRect.width, height: e.contentRect.height });
-      }
-    });
-    obs.observe(imgRef.current);
-    setSize({ width: imgRef.current.offsetWidth, height: imgRef.current.offsetHeight });
-    return () => obs.disconnect();
-  }, []);
-
   const imgSrc = page.imageDataUrl || page.imageUrl;
   const placeholderSrc = (() => {
     if (imgSrc) return imgSrc;
@@ -320,7 +315,6 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
           }}
         >
           <div
-            ref={imgRef}
             className="relative w-full h-full overflow-hidden"
             style={{ backgroundColor: page.backgroundColor || undefined }}
           >
@@ -332,8 +326,8 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
                   <img src={placeholderSrc} alt={page.title} className="w-full h-full object-cover select-none" draggable={false} />
                 )
               )}
-              {/* Overlays */}
-              {size.width > 0 && page.overlays.map(overlay => (
+              {/* Overlays rendered synchronously with zero delay */}
+              {page.overlays.map(overlay => (
                 <PublishedOverlay
                   key={overlay.id}
                   overlay={overlay}
