@@ -11,7 +11,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
   const count = images.length;
   
   const [activeIdx, setActiveIdx] = useState(0);
-  const [prevIdx, setPrevIdx] = useState(0);
+  const [prevIdx, setPrevIdx] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
 
   // Default melt duration (transition length) is 2s; hold time is 4s
@@ -25,7 +25,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
   useEffect(() => {
     if (activeIdx >= count) {
       setActiveIdx(Math.max(0, count - 1));
-      setPrevIdx(Math.max(0, count - 1));
+      setPrevIdx(null);
     }
   }, [count, activeIdx]);
 
@@ -40,6 +40,15 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
 
     return () => clearTimeout(timer);
   }, [activeIdx, isPaused, count, slideDuration]);
+
+  // Clean up outgoing slide after the melt transition finishes
+  useEffect(() => {
+    if (prevIdx === null) return;
+    const cleanTimer = setTimeout(() => {
+      setPrevIdx(null);
+    }, meltDuration * 1000);
+    return () => clearTimeout(cleanTimer);
+  }, [prevIdx, meltDuration]);
 
   const handleGoTo = (idx: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -66,7 +75,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
         <style>{`
           @keyframes kenburns-single {
             0% { transform: scale(1); }
-            50% { transform: scale(1.06); }
+            50% { transform: scale(1.035); }
             100% { transform: scale(1); }
           }
         `}</style>
@@ -96,13 +105,9 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
       title={isEditor ? undefined : 'Click to advance slide'}
     >
       <style>{`
-        @keyframes kenburns-zoom-in {
+        @keyframes kenburns-drift {
           0% { transform: scale(1); }
-          100% { transform: scale(1.07); }
-        }
-        @keyframes kenburns-zoom-out {
-          0% { transform: scale(1.07); }
-          100% { transform: scale(1); }
+          100% { transform: scale(1.035); }
         }
       `}</style>
 
@@ -110,24 +115,22 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
       {images.map((img, idx) => {
         const isCurrent = idx === activeIdx;
         const isPrev = idx === prevIdx;
+        const isActiveOrPrev = isCurrent || isPrev;
 
         let zIndex = 0;
         let opacity = 0;
-        let transition = `opacity ${meltDuration}s cubic-bezier(0.4, 0, 0.2, 1)`;
 
         if (isCurrent) {
           zIndex = 2;
           opacity = 1;
         } else if (isPrev) {
           zIndex = 1;
-          opacity = 1;
-          transition = 'none'; // Keep underlay rock solid while current dissolves over it
+          opacity = 0; // Smoothly fades out to 0 so outgoing slide never sticks out underneath
         }
 
-        const isEven = idx % 2 === 0;
-        const animName = isEven ? 'kenburns-zoom-in' : 'kenburns-zoom-out';
-        const animation = kenBurns && (isCurrent || isPrev)
-          ? `${animName} ${totalDuration}s ease-out forwards`
+        const transition = `opacity ${meltDuration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+        const animation = kenBurns && isActiveOrPrev
+          ? `kenburns-drift ${totalDuration}s ease-out forwards`
           : 'none';
         const animationPlayState = isPaused || isPrev ? 'paused' : 'running';
 
@@ -139,6 +142,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
               zIndex,
               opacity,
               transition,
+              visibility: isActiveOrPrev ? 'visible' : 'hidden',
             }}
           >
             <img
@@ -151,7 +155,7 @@ export default function MeltGalleryPlayer({ overlay, isEditor = false }: Props) 
                 transformOrigin: 'center center',
                 animation,
                 animationPlayState,
-                willChange: kenBurns ? 'transform' : undefined,
+                willChange: kenBurns ? 'transform, opacity' : 'opacity',
               }}
               draggable={false}
             />
