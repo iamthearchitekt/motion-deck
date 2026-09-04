@@ -2,7 +2,7 @@
 
 export type DeckStatus = 'draft' | 'published' | 'archived';
 
-export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip';
+export type OverlayType = 'link' | 'gif' | 'mp4' | 'carousel' | 'image' | 'flip' | 'melt';
 
 export type TransitionStyle = 'none' | 'fade' | 'fadeUp';
 
@@ -74,6 +74,11 @@ export interface Overlay {
 
   // Carousel-specific
   carouselImages?: string[];
+
+  // Melt / Slow Fade Gallery specific
+  meltDuration?: number; // duration of the melt/fade in seconds (e.g. 2s)
+  slideDuration?: number; // duration each slide is held in seconds (e.g. 4s)
+  kenBurns?: boolean; // subtle slow zoom/pan dynamic effect
 
   // Flip-specific
   flipFrontUrl?: string;

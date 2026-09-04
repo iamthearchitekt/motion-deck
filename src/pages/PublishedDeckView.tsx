@@ -7,6 +7,7 @@ import { SLIDE_SIZES } from '../types';
 import PageTransitionWrapper from '../components/PageTransitionWrapper';
 import PageNavigationControls from '../components/PageNavigationControls';
 import CarouselPlayer from '../components/CarouselPlayer';
+import MeltGalleryPlayer from '../components/MeltGalleryPlayer';
 import { makePlaceholderPage } from '../data/sampleDeck';
 
 function formatUrl(url?: string) {
@@ -110,6 +111,9 @@ function PublishedOverlay({ overlay }: {
 
       case 'carousel':
         return <CarouselPlayer overlay={overlay} />;
+
+      case 'melt':
+        return <MeltGalleryPlayer overlay={overlay} />;
     }
   };
 
@@ -162,7 +166,7 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
           className={`relative bg-black z-10 ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
           style={{
             width: '100%',
-            maxWidth: `calc(100dvh * ${aspectRatio})`,
+            maxWidth: `min(100vw, calc(100dvh * ${aspectRatio}))`,
             aspectRatio: `${aspectRatio}`,
           }}
         >

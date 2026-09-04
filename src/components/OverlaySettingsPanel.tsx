@@ -79,6 +79,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   const overlay = overlayId ? (page.overlays || []).find(o => o.id === overlayId) : null;
   const mediaRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLInputElement>(null);
+  const meltRef = useRef<HTMLInputElement>(null);
   const flipFrontRef = useRef<HTMLInputElement>(null);
   const flipBackRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -186,7 +187,9 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
   return (
     <div className="sidebar-panel w-64 flex-shrink-0 overflow-y-auto">
       <div className="sidebar-header">
-        <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider capitalize">{overlay.type} Overlay</span>
+        <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider capitalize">
+          {overlay.type === 'melt' ? 'Picture Fade Slideshow' : `${overlay.type} Overlay`}
+        </span>
         <div className="flex gap-1">
           <button onClick={() => update({ visible: !overlay.visible })} className="p-1 rounded text-text-muted hover:text-text-primary transition-colors" title="Toggle visibility">
             {overlay.visible ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -230,12 +233,12 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         </div>
 
         {/* Label */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
           <TextInput label="Label" value={overlay.label || ''} onChange={v => update({ label: v })} placeholder="Optional label..." />
         )}
 
         {/* Position & Size */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
           <div>
             <p className="field-label mb-2">Position & Size</p>
             <div className="grid grid-cols-2 gap-2">
@@ -248,7 +251,7 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
         )}
 
         {/* Appearance */}
-        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && (
+        {overlay.type !== 'link' && overlay.type !== 'image' && overlay.type !== 'gif' && overlay.type !== 'mp4' && overlay.type !== 'carousel' && overlay.type !== 'flip' && overlay.type !== 'melt' && (
           <div>
             <p className="field-label mb-2">Appearance</p>
             <div className="space-y-2">
@@ -400,6 +403,161 @@ export default function OverlaySettingsPanel({ page, overlayId, deckId }: Props)
               )}
             </div>
             <p className="text-[10px] text-text-muted mt-2">Auto-plays in presentation mode until clicked. Drag canvas corners to scale.</p>
+          </div>
+        )}
+        {/* ── Slow Fade / Melt Gallery ── */}
+        {overlay.type === 'melt' && (
+          <div className="space-y-4">
+            <div>
+              <p className="field-label mb-2">Gallery Photos (Max 10)</p>
+              
+              <div className="space-y-2">
+                {/* Thumbnail Grid */}
+                {(overlay.carouselImages || []).length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(overlay.carouselImages || []).map((img, idx) => (
+                      <div key={idx} className="relative group bg-surface-3 rounded overflow-hidden h-16 border border-border-subtle">
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => {
+                            const newImages = [...(overlay.carouselImages || [])];
+                            newImages.splice(idx, 1);
+                            update({ carouselImages: newImages });
+                          }}
+                          className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                          title="Remove photo"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                {(overlay.carouselImages || []).length < 10 ? (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      multiple
+                      className="hidden"
+                      ref={meltRef}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (!files.length) return;
+                        const currentCount = (overlay.carouselImages || []).length;
+                        const allowedFiles = files.slice(0, 10 - currentCount);
+                        
+                        setIsUploading(true);
+                        Promise.all(allowedFiles.map(f => uploadFile(f, deckId))).then(publicUrls => {
+                          update({ carouselImages: [...(overlay.carouselImages || []), ...publicUrls] });
+                        }).finally(() => {
+                          setIsUploading(false);
+                        });
+                        
+                        if (meltRef.current) meltRef.current.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => meltRef.current?.click()}
+                      disabled={isUploading}
+                      className={`w-full border border-dashed rounded-lg py-4 flex flex-col items-center gap-2 transition-all ${
+                        isUploading
+                          ? 'border-border-default opacity-50 cursor-not-allowed'
+                          : 'border-border-default text-text-muted hover:border-accent hover:text-accent'
+                      }`}
+                    >
+                      <Upload size={16} />
+                      <span className="text-xs">
+                        {isUploading ? 'Uploading...' : `Add Photos (${(overlay.carouselImages || []).length}/10)`}
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center p-2 bg-surface-3 rounded border border-border-default text-xs text-text-muted">
+                    Maximum of 10 photos reached.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Timing & Melt Speeds */}
+            <div className="space-y-3 pt-2 border-t border-border-subtle">
+              <div className="field-group">
+                <label className="field-label">Display Time Per Photo</label>
+                <select
+                  value={overlay.slideDuration ?? 4}
+                  onChange={e => update({ slideDuration: parseFloat(e.target.value) })}
+                  className="w-full"
+                >
+                  <option value={2}>2 seconds (Quick)</option>
+                  <option value={3}>3 seconds</option>
+                  <option value={4}>4 seconds (Standard)</option>
+                  <option value={6}>6 seconds (Relaxed)</option>
+                  <option value={8}>8 seconds (Slow)</option>
+                </select>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Melt Transition Speed</label>
+                <select
+                  value={overlay.meltDuration ?? 2}
+                  onChange={e => update({ meltDuration: parseFloat(e.target.value) })}
+                  className="w-full"
+                >
+                  <option value={1}>1.0s (Gentle)</option>
+                  <option value={1.5}>1.5s (Smooth)</option>
+                  <option value={2}>2.0s (Deep Melt)</option>
+                  <option value={3}>3.0s (Dreamy)</option>
+                  <option value={4}>4.0s (Ultra Slow)</option>
+                </select>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Photo Fit</label>
+                <select
+                  value={overlay.fitMode || 'contain'}
+                  onChange={e => update({ fitMode: e.target.value as 'contain' | 'cover' })}
+                  className="w-full"
+                >
+                  <option value="contain">Contain (Keep entire photo visible)</option>
+                  <option value="cover">Cover (Fill overlay frame)</option>
+                </select>
+              </div>
+
+              <div className="py-1">
+                <Toggle
+                  label="Ken Burns Effect (Subtle Zoom)"
+                  checked={overlay.kenBurns ?? false}
+                  onChange={v => update({ kenBurns: v })}
+                />
+              </div>
+
+              <div>
+                <p className="field-label mb-2">Appearance</p>
+                <div className="space-y-2">
+                  <NumberInput
+                    label="Opacity"
+                    value={overlay.opacity * 100}
+                    onChange={v => update({ opacity: v / 100 })}
+                    max={100}
+                    unit="%"
+                  />
+                  <NumberInput
+                    label="Border Radius"
+                    value={overlay.borderRadius}
+                    onChange={v => update({ borderRadius: v })}
+                    max={100}
+                    unit="px"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-text-muted mt-2">
+              Photos softly crossfade in a continuous melt loop. In presentation view, hover to pause or click to advance.
+            </p>
           </div>
         )}
         {/* ── Flip Card ── */}

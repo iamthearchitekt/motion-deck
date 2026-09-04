@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Link, Image, Film, MousePointer, Plus, Move } from 'lucide-react';
+import { Link, Image, Film, MousePointer, Plus, Move, Sparkles } from 'lucide-react';
 import type { Deck, DeckPage, Overlay, OverlayType } from '../types';
 import { SLIDE_SIZES } from '../types';
 import { addOverlay, updateOverlay } from '../db/hooks';
 import { makePlaceholderPage } from '../data/sampleDeck';
+import MeltGalleryPlayer from './MeltGalleryPlayer';
 
 interface Props {
   deck: Deck;
@@ -19,6 +20,7 @@ const OVERLAY_ICONS: Record<OverlayType, React.ReactNode> = {
   gif: <Image size={16} />,
   mp4: <Film size={16} />,
   carousel: <div className="flex -space-x-2"><Image size={16}/><Image size={16}/></div>,
+  melt: <Sparkles size={16} />,
   flip: <Move size={16} />,
 };
 
@@ -28,6 +30,7 @@ const OVERLAY_COLORS: Record<OverlayType, string> = {
   gif: '#f59e0b',
   mp4: '#ef4444',
   carousel: '#8b5cf6',
+  melt: '#c9a251',
   flip: '#ec4899',
 };
 
@@ -110,6 +113,17 @@ function OverlayItem({
           </div>
         );
       }
+      case 'melt': {
+        const hasImages = overlay.carouselImages && overlay.carouselImages.length > 0;
+        return hasImages ? (
+          <MeltGalleryPlayer overlay={overlay} isEditor />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 opacity-60">
+            <Sparkles size={20} style={{ color }} />
+            <span className="text-[10px] font-medium" style={{ color }}>Picture Fade Slideshow</span>
+          </div>
+        );
+      }
       case 'flip':
         return overlay.flipFrontUrl ? (
           <img src={overlay.flipFrontUrl} alt="Flip Front" className="w-full h-full pointer-events-none" style={{ objectFit: overlay.fitMode || 'contain', borderRadius: `${overlay.borderRadius || 0}px`, overflow: 'hidden' }} draggable={false} />
@@ -129,13 +143,13 @@ function OverlayItem({
   };
 
   const getBg = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return 'transparent';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt') return 'transparent';
     if (overlay.type === 'link' && overlay.buttonStyle === 'invisible') return 'transparent';
     return `${color}18`;
   };
 
   const getBorder = () => {
-    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip') return isSelected ? `2px solid ${color}` : 'none';
+    if (overlay.type === 'gif' || overlay.type === 'image' || overlay.type === 'mp4' || overlay.type === 'carousel' || overlay.type === 'flip' || overlay.type === 'melt') return isSelected ? `2px solid ${color}` : 'none';
     return isSelected ? `2px solid ${color}` : `1px dashed ${color}60`;
   };
 
@@ -235,7 +249,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
 
   const handleAddOverlay = async (type: OverlayType) => {
     setShowAddMenu(false);
-    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip';
+    const isMedia = type === 'gif' || type === 'mp4' || type === 'carousel' || type === 'image' || type === 'flip' || type === 'melt';
     const defaults: Omit<Overlay, 'id' | 'pageId'> = {
       type,
       // Media overlays spawn centered
@@ -256,6 +270,8 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
       loop: true,
       muted: true,
       showControls: false,
+      meltDuration: 2,
+      slideDuration: 4,
     };
     const id = await addOverlay(page.id, defaults);
     onSelectOverlay(id);
@@ -267,6 +283,7 @@ export default function PageCanvas({ deck, page, selectedOverlayId, onSelectOver
     { type: 'gif', label: 'GIF Overlay', icon: <Image size={14} />, desc: 'Animated GIF layer' },
     { type: 'mp4', label: 'MP4 Video', icon: <Film size={14} />, desc: 'Inline video player' },
     { type: 'carousel', label: 'Image Carousel', icon: <div className="flex -space-x-1"><Image size={14}/><Image size={14}/></div>, desc: 'Scrollable image gallery' },
+    { type: 'melt', label: 'Picture Fade Slideshow', icon: <Sparkles size={14} />, desc: 'Slow melt transition between photos' },
     { type: 'flip', label: 'Flip Card', icon: <Move size={14} />, desc: 'Interactive double-sided image' },
   ];
 
