@@ -861,30 +861,7 @@ export default function PublishedDeckView() {
             </button>
           </div>
 
-          {/* Side Arrows on Desktop */}
-          {currentIndex > 0 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); goToPrevSlide(); }}
-              className={`fixed left-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black text-white/80 hover:text-white border border-white/15 hover:border-accent shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer hidden md:flex ${
-                showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-              }`}
-              title="Previous Slide"
-            >
-              <ChevronLeft size={24} />
-            </button>
-          )}
 
-          {currentIndex < pages.length - 1 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); goToNextSlide(); }}
-              className={`fixed right-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black text-white/80 hover:text-white border border-white/15 hover:border-accent shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer hidden md:flex ${
-                showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-              }`}
-              title="Next Slide"
-            >
-              <ChevronRight size={24} />
-            </button>
-          )}
 
           {/* Bottom Progress Line */}
           <div className="fixed bottom-0 left-0 right-0 h-[3px] bg-white/10 pointer-events-none z-50">
