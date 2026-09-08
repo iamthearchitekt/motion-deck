@@ -19,7 +19,21 @@ function formatUrl(url?: string) {
   return url;
 }
 
-function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string; poster?: string; style?: React.CSSProperties; className?: string; onClick?: (e: React.MouseEvent) => void }) {
+function AutoPlayVideo({
+  src,
+  poster,
+  style,
+  className,
+  isPresentation,
+  onClick
+}: {
+  src: string;
+  poster?: string;
+  style?: React.CSSProperties;
+  className?: string;
+  isPresentation?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const isIntersectingRef = useRef(false);
   const manuallyPausedRef = useRef(false);
@@ -37,7 +51,8 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
     video.setAttribute('x5-playsinline', '');
 
     const playSafe = () => {
-      if (!videoRef.current || manuallyPausedRef.current || !isIntersectingRef.current) return;
+      if (!videoRef.current || manuallyPausedRef.current) return;
+      if (!isPresentation && !isIntersectingRef.current) return;
       videoRef.current.muted = true;
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
@@ -45,7 +60,7 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
           // If autoplay was rejected (e.g. low power mode or pre-gesture requirement),
           // retry automatically on the very first user interaction (touch/scroll)
           const onFirstInteraction = () => {
-            if (videoRef.current && isIntersectingRef.current && !manuallyPausedRef.current) {
+            if (videoRef.current && (isPresentation || isIntersectingRef.current) && !manuallyPausedRef.current) {
               videoRef.current.muted = true;
               videoRef.current.play().catch(() => {});
             }
@@ -64,39 +79,47 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
       }
     };
 
-    // Viewport-aware playback observer
-    // rootMargin: '150px 0px 150px 0px' prepares/plays slightly before scrolling into view,
-    // and immediately pauses when offscreen to release iOS hardware video decoders (limit 3-4).
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          isIntersectingRef.current = entry.isIntersecting;
-          if (entry.isIntersecting) {
-            playSafe();
-          } else {
-            manuallyPausedRef.current = false;
-            pauseSafe();
-          }
-        }
-      },
-      {
-        threshold: 0.05,
-        rootMargin: '150px 0px 150px 0px',
-      }
-    );
+    let observer: IntersectionObserver | null = null;
 
-    observer.observe(video);
+    if (isPresentation) {
+      isIntersectingRef.current = true;
+      playSafe();
+    } else {
+      // Viewport-aware playback observer
+      // rootMargin: '150px 0px 150px 0px' prepares/plays slightly before scrolling into view,
+      // and immediately pauses when offscreen to release iOS hardware video decoders (limit 3-4).
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            isIntersectingRef.current = entry.isIntersecting;
+            if (entry.isIntersecting) {
+              playSafe();
+            } else {
+              manuallyPausedRef.current = false;
+              pauseSafe();
+            }
+          }
+        },
+        {
+          threshold: 0.05,
+          rootMargin: '150px 0px 150px 0px',
+        }
+      );
+
+      observer.observe(video);
+    }
 
     const onCanPlay = () => {
-      if (isIntersectingRef.current && !manuallyPausedRef.current && videoRef.current?.paused) {
+      if ((isPresentation || isIntersectingRef.current) && !manuallyPausedRef.current && videoRef.current?.paused) {
         playSafe();
       }
     };
     video.addEventListener('canplay', onCanPlay);
+    video.addEventListener('loadedmetadata', onCanPlay);
 
     // Tab visibility handling
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isIntersectingRef.current) {
+      if (document.visibilityState === 'visible' && (isPresentation || isIntersectingRef.current)) {
         playSafe();
       } else if (document.visibilityState === 'hidden') {
         pauseSafe();
@@ -105,12 +128,13 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      observer.disconnect();
+      if (observer) observer.disconnect();
       video.removeEventListener('canplay', onCanPlay);
+      video.removeEventListener('loadedmetadata', onCanPlay);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       pauseSafe();
     };
-  }, [src]);
+  }, [src, isPresentation]);
 
   return (
     <video
@@ -123,7 +147,7 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
       loop
       muted
       playsInline
-      preload="metadata"
+      preload={isPresentation ? 'auto' : 'metadata'}
       controls={false}
       onClick={(e) => {
         const v = e.currentTarget;
@@ -140,8 +164,9 @@ function AutoPlayVideo({ src, poster, style, className, onClick }: { src: string
   );
 }
 
-function PublishedOverlay({ overlay }: {
+function PublishedOverlay({ overlay, isPresentation }: {
   overlay: Overlay;
+  isPresentation?: boolean;
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -211,6 +236,7 @@ function PublishedOverlay({ overlay }: {
             src={overlay.mediaUrl}
             style={{ width: '100%', height: '100%', objectFit: overlay.fitMode || 'contain' }}
             poster={overlay.posterUrl}
+            isPresentation={isPresentation}
           />
         ) : null;
 
@@ -282,11 +308,12 @@ function PublishedOverlay({ overlay }: {
   );
 }
 
-function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
+function PublishedPage({ deck, page, transitionStyle, transitionSpeed, isPresentation }: {
   deck: Deck;
   page: DeckPage;
   transitionStyle: any;
   transitionSpeed: any;
+  isPresentation?: boolean;
 }) {
   const imgSrc = page.imageDataUrl || page.imageUrl;
   const placeholderSrc = (() => {
@@ -299,43 +326,68 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
   })();
 
   const slideSize = deck?.slideSize || '16:9';
-  const aspectRatio = SLIDE_SIZES[slideSize].aspectRatio;
+  const aspectRatio = SLIDE_SIZES[slideSize]?.aspectRatio || (16 / 9);
   const isVertical = aspectRatio < 1;
+
+  const slideElement = (
+    <div
+      className={`relative bg-black z-10 overflow-hidden ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
+      style={{
+        width: '100%',
+        maxWidth: isPresentation
+          ? `min(calc((100dvh - 1.5rem) * ${aspectRatio}), calc(100vw - 1rem))`
+          : `min(calc(100dvh * ${aspectRatio}), calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)))`,
+        maxHeight: isPresentation ? 'calc(100dvh - 1.5rem)' : undefined,
+        aspectRatio: `${aspectRatio}`,
+        containerType: 'inline-size'
+      }}
+    >
+      <div
+        className="relative w-full h-full overflow-hidden"
+        style={{ backgroundColor: page.backgroundColor || undefined }}
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          {placeholderSrc && (
+            page.backgroundType === 'video' ? (
+              <AutoPlayVideo
+                src={placeholderSrc}
+                isPresentation={isPresentation}
+                className="w-full h-full object-cover select-none"
+              />
+            ) : (
+              <img
+                src={placeholderSrc}
+                alt={page.title}
+                className="w-full h-full object-cover select-none"
+                draggable={false}
+              />
+            )
+          )}
+          {/* Overlays rendered synchronously with zero delay */}
+          {page.overlays.map(overlay => (
+            <PublishedOverlay
+              key={overlay.id}
+              overlay={overlay}
+              isPresentation={isPresentation}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isPresentation) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-2 sm:p-4 select-none">
+        {slideElement}
+      </div>
+    );
+  }
 
   return (
     <PageTransitionWrapper transitionStyle={transitionStyle} transitionSpeed={transitionSpeed}>
       <div className="deck-slide-page-wrapper">
-        <div
-          className={`relative bg-black z-10 overflow-hidden ${isVertical ? 'shadow-[0_0_80px_rgba(0,0,0,0.8)]' : ''}`}
-          style={{
-            width: '100%',
-            maxWidth: `min(calc(100dvh * ${aspectRatio}), calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)))`,
-            aspectRatio: `${aspectRatio}`,
-            containerType: 'inline-size'
-          }}
-        >
-          <div
-            className="relative w-full h-full overflow-hidden"
-            style={{ backgroundColor: page.backgroundColor || undefined }}
-          >
-            <div className="absolute inset-0 overflow-hidden">
-              {placeholderSrc && (
-                page.backgroundType === 'video' ? (
-                  <AutoPlayVideo src={placeholderSrc} className="w-full h-full object-cover select-none" />
-                ) : (
-                  <img src={placeholderSrc} alt={page.title} className="w-full h-full object-cover select-none" draggable={false} />
-                )
-              )}
-              {/* Overlays rendered synchronously with zero delay */}
-              {page.overlays.map(overlay => (
-                <PublishedOverlay
-                  key={overlay.id}
-                  overlay={overlay}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        {slideElement}
       </div>
     </PageTransitionWrapper>
   );
@@ -441,15 +493,18 @@ export default function PublishedDeckView() {
     setShowControls(true);
 
     try {
-      const el = document.documentElement as any;
-      if (el.requestFullscreen) {
-        await el.requestFullscreen();
-        wasNativeFullscreenRef.current = true;
-        setIsNativeFullscreen(true);
-      } else if (el.webkitRequestFullscreen) {
-        await el.webkitRequestFullscreen();
-        wasNativeFullscreenRef.current = true;
-        setIsNativeFullscreen(true);
+      const doc = document as any;
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        const el = document.documentElement as any;
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+          wasNativeFullscreenRef.current = true;
+          setIsNativeFullscreen(true);
+        } else if (el.webkitRequestFullscreen) {
+          await el.webkitRequestFullscreen();
+          wasNativeFullscreenRef.current = true;
+          setIsNativeFullscreen(true);
+        }
       }
     } catch {
       // Mobile Safari / permissions
@@ -461,6 +516,7 @@ export default function PublishedDeckView() {
   const toggleFullscreen = useCallback(async () => {
     const doc = document as any;
     if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+      wasNativeFullscreenRef.current = false;
       if (doc.exitFullscreen) await doc.exitFullscreen().catch(() => {});
       else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen().catch(() => {});
       setIsNativeFullscreen(false);
@@ -468,9 +524,22 @@ export default function PublishedDeckView() {
       const el = document.documentElement as any;
       if (el.requestFullscreen) await el.requestFullscreen().catch(() => {});
       else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen().catch(() => {});
+      wasNativeFullscreenRef.current = true;
       setIsNativeFullscreen(true);
     }
   }, []);
+
+  // Lock body scroll when presentation mode is active
+  useEffect(() => {
+    if (isPresentationMode) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isPresentationMode]);
 
   // Listen for fullscreen change (e.g. user pressed Esc)
   useEffect(() => {
@@ -610,7 +679,7 @@ export default function PublishedDeckView() {
 
   const handlePresentationClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('button, a, input, select, textarea, [role="button"], .hotspot-invisible')) {
+    if (target.closest('button, a, input, select, textarea, [role="button"], .hotspot-invisible, video')) {
       return;
     }
     goToNextSlide();
@@ -680,7 +749,10 @@ export default function PublishedDeckView() {
       )}
 
       {/* Standard Deck pages (Vertical Scroll View) */}
-      <div className="deck-slides-container">
+      <div
+        className="deck-slides-container"
+        style={{ display: isPresentationMode ? 'none' : 'block' }}
+      >
         {pages.map((page: DeckPage, i: number) => (
           <div
             key={page.id}
@@ -737,6 +809,7 @@ export default function PublishedDeckView() {
               page={pages[currentIndex]}
               transitionStyle={deck.transitionStyle}
               transitionSpeed={deck.transitionSpeed}
+              isPresentation={true}
             />
           </div>
 
