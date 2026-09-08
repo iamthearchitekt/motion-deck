@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../db/supabase';
 import { useDeck, usePages } from '../db/hooks';
 import type { Deck, DeckPage, Overlay } from '../types';
@@ -9,7 +9,7 @@ import PageNavigationControls from '../components/PageNavigationControls';
 import CarouselPlayer from '../components/CarouselPlayer';
 import MeltGalleryPlayer from '../components/MeltGalleryPlayer';
 import { makePlaceholderPage } from '../data/sampleDeck';
-import { Box } from 'lucide-react';
+import { Box, Play, ChevronRight, ChevronLeft, Maximize, Minimize, X, Check } from 'lucide-react';
 
 function formatUrl(url?: string) {
   if (!url) return '#';
@@ -343,10 +343,18 @@ function PublishedPage({ deck, page, transitionStyle, transitionSpeed }: {
 
 export default function PublishedDeckView() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const [deckId, setDeckId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const controlsFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasNativeFullscreenRef = useRef(false);
+  const isThrottledRef = useRef(false);
 
   // Resolve slug → deckId
   useEffect(() => {
@@ -365,8 +373,9 @@ export default function PublishedDeckView() {
     pageRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  // Track current page on scroll
+  // Track current page on scroll in normal view
   useEffect(() => {
+    if (isPresentationMode) return;
     const observer = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
@@ -380,7 +389,233 @@ export default function PublishedDeckView() {
     );
     pageRefs.current.forEach(ref => { if (ref) observer.observe(ref); });
     return () => observer.disconnect();
-  }, [pages]);
+  }, [pages, isPresentationMode]);
+
+  // Controls auto-fade timer in presentation mode
+  const resetControlsTimer = useCallback(() => {
+    setShowControls(true);
+    if (controlsFadeTimer.current) clearTimeout(controlsFadeTimer.current);
+    controlsFadeTimer.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3500);
+  }, []);
+
+  const exitPresentationMode = useCallback(() => {
+    setIsPresentationMode(false);
+    const doc = document as any;
+    if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+      if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+      else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen().catch(() => {});
+    }
+    wasNativeFullscreenRef.current = false;
+    setIsNativeFullscreen(false);
+
+    // Scroll normal scroll view smoothly to current slide
+    setTimeout(() => {
+      pageRefs.current[currentIndex]?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, 60);
+  }, [currentIndex]);
+
+  const goToNextSlide = useCallback(() => {
+    if (!pages || pages.length === 0) return;
+    if (currentIndex < pages.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else if (isPresentationMode) {
+      // Completed presentation
+      exitPresentationMode();
+    }
+  }, [pages, currentIndex, isPresentationMode, exitPresentationMode]);
+
+  const goToPrevSlide = useCallback(() => {
+    if (!pages || pages.length === 0) return;
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  }, [pages, currentIndex]);
+
+  const enterPresentationMode = useCallback(async (startIdx?: number) => {
+    if (!pages || pages.length === 0) return;
+    const idx = typeof startIdx === 'number' ? startIdx : currentIndex;
+    setCurrentIndex(idx);
+    setIsPresentationMode(true);
+    setShowControls(true);
+
+    try {
+      const el = document.documentElement as any;
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+        wasNativeFullscreenRef.current = true;
+        setIsNativeFullscreen(true);
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+        wasNativeFullscreenRef.current = true;
+        setIsNativeFullscreen(true);
+      }
+    } catch {
+      // Mobile Safari / permissions
+      wasNativeFullscreenRef.current = false;
+      setIsNativeFullscreen(false);
+    }
+  }, [pages, currentIndex]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const doc = document as any;
+    if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+      if (doc.exitFullscreen) await doc.exitFullscreen().catch(() => {});
+      else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen().catch(() => {});
+      setIsNativeFullscreen(false);
+    } else {
+      const el = document.documentElement as any;
+      if (el.requestFullscreen) await el.requestFullscreen().catch(() => {});
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen().catch(() => {});
+      setIsNativeFullscreen(true);
+    }
+  }, []);
+
+  // Listen for fullscreen change (e.g. user pressed Esc)
+  useEffect(() => {
+    const onFsChange = () => {
+      const doc = document as any;
+      const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+      setIsNativeFullscreen(isFs);
+      if (!isFs && wasNativeFullscreenRef.current && isPresentationMode) {
+        exitPresentationMode();
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, [isPresentationMode, exitPresentationMode]);
+
+  // Mouse activity in presentation mode
+  useEffect(() => {
+    if (!isPresentationMode) return;
+    resetControlsTimer();
+    const onActivity = () => resetControlsTimer();
+    window.addEventListener('mousemove', onActivity);
+    window.addEventListener('touchstart', onActivity);
+    return () => {
+      window.removeEventListener('mousemove', onActivity);
+      window.removeEventListener('touchstart', onActivity);
+      if (controlsFadeTimer.current) clearTimeout(controlsFadeTimer.current);
+    };
+  }, [isPresentationMode, resetControlsTimer]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+
+      if (isPresentationMode) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'Enter' || e.key === 'PageDown') {
+          e.preventDefault();
+          goToNextSlide();
+          resetControlsTimer();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Backspace' || e.key === 'PageUp') {
+          e.preventDefault();
+          goToPrevSlide();
+          resetControlsTimer();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          exitPresentationMode();
+        } else if (e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          toggleFullscreen();
+        }
+      } else {
+        if (e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          enterPresentationMode(currentIndex);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isPresentationMode, currentIndex, goToNextSlide, goToPrevSlide, exitPresentationMode, toggleFullscreen, enterPresentationMode, resetControlsTimer]);
+
+  // Debounced wheel & touch swipe in presentation mode to prevent skipping slides
+  useEffect(() => {
+    if (!isPresentationMode) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (isThrottledRef.current) return;
+      if (Math.abs(e.deltaY) > 25) {
+        isThrottledRef.current = true;
+        if (e.deltaY > 0) {
+          goToNextSlide();
+        } else {
+          goToPrevSlide();
+        }
+        resetControlsTimer();
+        setTimeout(() => {
+          isThrottledRef.current = false;
+        }, 450);
+      }
+    };
+
+    let touchStartX: number | null = null;
+    let touchStartY: number | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartX === null || touchStartY === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          goToNextSlide();
+        } else {
+          goToPrevSlide();
+        }
+        resetControlsTimer();
+      } else if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) {
+        if (dy < 0) {
+          goToNextSlide();
+        } else {
+          goToPrevSlide();
+        }
+        resetControlsTimer();
+      }
+      touchStartX = null;
+      touchStartY = null;
+    };
+
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isPresentationMode, goToNextSlide, goToPrevSlide, resetControlsTimer]);
+
+  // Direct link ?present=true
+  useEffect(() => {
+    if (pages && pages.length > 0 && (searchParams.get('present') === 'true' || searchParams.get('present') === '1')) {
+      enterPresentationMode(0);
+    }
+  }, [pages, searchParams, enterPresentationMode]);
+
+  const handlePresentationClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [role="button"], .hotspot-invisible')) {
+      return;
+    }
+    goToNextSlide();
+    resetControlsTimer();
+  };
 
   if (notFound || (!deck && !deckId)) {
     return (
@@ -427,7 +662,24 @@ export default function PublishedDeckView() {
         </div>
       )}
 
-      {/* Deck pages */}
+      {/* Normal Mode: Launch Presentation Button in Top Right (Outside Slide Canvas) */}
+      {!isPresentationMode && (
+        <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+          <button
+            onClick={() => enterPresentationMode(currentIndex)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-black/85 hover:bg-black text-white border border-white/20 hover:border-accent shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer text-xs font-semibold group hover:shadow-glow-accent active:scale-95"
+            title="Start Presentation Mode (P)"
+          >
+            <Play size={13} className="text-accent fill-accent group-hover:scale-110 transition-transform" />
+            <span>Present</span>
+            <span className="text-[10px] text-white/60 px-1.5 py-0.5 rounded bg-white/10 font-mono">
+              {currentIndex + 1}/{pages.length}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Standard Deck pages (Vertical Scroll View) */}
       <div className="deck-slides-container">
         {pages.map((page: DeckPage, i: number) => (
           <div
@@ -446,13 +698,130 @@ export default function PublishedDeckView() {
         ))}
       </div>
 
+      {/* Standard Navigation controls (when not presenting) */}
+      {!isPresentationMode && (
+        <PageNavigationControls
+          pages={pages}
+          currentIndex={currentIndex}
+          onNavigate={scrollToPage}
+        />
+      )}
 
-      {/* Navigation controls */}
-      <PageNavigationControls
-        pages={pages}
-        currentIndex={currentIndex}
-        onNavigate={scrollToPage}
-      />
+      {/* ─── Presentation Mode Overlay ─────────────────────────────────────── */}
+      {isPresentationMode && pages[currentIndex] && (
+        <div
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden"
+          onClick={handlePresentationClick}
+          style={{ cursor: showControls ? 'default' : 'none' }}
+        >
+          {/* Side Branding for Vertical Presentation */}
+          {isVertical && deck?.showPaddingBranding && brandingImageUrl && (
+            <div className="fixed inset-0 flex pointer-events-none z-0">
+              <div className="flex-1 relative">
+                <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+              </div>
+              <div className="flex-none" style={{ width: `calc(100dvh * ${aspectRatio})`, maxWidth: '100vw' }} />
+              <div className="flex-1 relative">
+                <img src={brandingImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+              </div>
+            </div>
+          )}
+
+          {/* Active Single Slide Display */}
+          <div
+            key={`pres-page-${pages[currentIndex].id}`}
+            className="relative z-10 w-full h-full flex items-center justify-center animate-fade-in"
+          >
+            <PublishedPage
+              deck={deck}
+              page={pages[currentIndex]}
+              transitionStyle={deck.transitionStyle}
+              transitionSpeed={deck.transitionSpeed}
+            />
+          </div>
+
+          {/* Top Right Floating Toolbar (Outside Slide Deck Space) */}
+          <div
+            className={`fixed top-4 right-4 z-50 flex items-center gap-2 transition-opacity duration-300 ${
+              showControls ? 'opacity-100 pointer-events-auto' : 'opacity-35 hover:opacity-100 pointer-events-auto'
+            }`}
+          >
+            {/* Previous Slide Button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrevSlide(); }}
+              disabled={currentIndex === 0}
+              className="p-2 rounded-full bg-black/80 hover:bg-black text-white border border-white/15 hover:border-accent shadow-xl backdrop-blur-md transition-all cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed active:scale-95"
+              title="Previous Slide (← / ↑)"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Next Slide / Advance Button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNextSlide(); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent-hover text-black shadow-2xl transition-all duration-200 cursor-pointer text-xs font-bold shadow-glow-accent active:scale-95"
+              title="Next Slide (Space / → / Click)"
+            >
+              <span>{currentIndex === pages.length - 1 ? 'End' : 'Next'}</span>
+              <span className="text-[11px] bg-black/15 px-1.5 py-0.5 rounded-full font-mono font-medium">
+                {currentIndex + 1}/{pages.length}
+              </span>
+              {currentIndex < pages.length - 1 ? <ChevronRight size={15} /> : <Check size={15} />}
+            </button>
+
+            {/* Toggle Fullscreen Button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+              className="p-2 rounded-full bg-black/80 hover:bg-black text-white border border-white/15 hover:border-accent shadow-xl backdrop-blur-md transition-all cursor-pointer active:scale-95 hidden sm:flex"
+              title="Toggle Fullscreen (F)"
+            >
+              {isNativeFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+            </button>
+
+            {/* Exit Presentation Button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); exitPresentationMode(); }}
+              className="p-2 rounded-full bg-black/80 hover:bg-black text-white border border-white/15 hover:border-accent shadow-xl backdrop-blur-md transition-all cursor-pointer active:scale-95"
+              title="Exit Presentation (Esc)"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Side Arrows on Desktop */}
+          {currentIndex > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrevSlide(); }}
+              className={`fixed left-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black text-white/80 hover:text-white border border-white/15 hover:border-accent shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer hidden md:flex ${
+                showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+              }`}
+              title="Previous Slide"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+
+          {currentIndex < pages.length - 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNextSlide(); }}
+              className={`fixed right-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black text-white/80 hover:text-white border border-white/15 hover:border-accent shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer hidden md:flex ${
+                showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+              }`}
+              title="Next Slide"
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
+
+          {/* Bottom Progress Line */}
+          <div className="fixed bottom-0 left-0 right-0 h-[3px] bg-white/10 pointer-events-none z-50">
+            <div
+              className="h-full bg-accent transition-all duration-300 ease-out"
+              style={{ width: `${((currentIndex + 1) / pages.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
