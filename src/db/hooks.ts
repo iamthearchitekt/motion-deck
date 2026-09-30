@@ -110,12 +110,12 @@ export async function deleteDeck(id: string) {
 }
 
 export async function duplicateDeck(id: string): Promise<string> {
-  const { data: deck } = await supabase.from('decks').select('*').eq('id', id).single();
-  if (!deck) throw new Error('Deck not found');
+  const { data: deck, error: deckErr } = await supabase.from('decks').select('*').eq('id', id).single();
+  if (deckErr || !deck) throw new Error(deckErr?.message || 'Deck not found');
 
   const newDeckId = uuidv4();
   const now = new Date().toISOString();
-  await supabase.from('decks').insert({
+  const { error: insertDeckErr } = await supabase.from('decks').insert({
     ...deck,
     id: newDeckId,
     title: `${deck.title} (Copy)`,
@@ -124,25 +124,30 @@ export async function duplicateDeck(id: string): Promise<string> {
     createdAt: now,
     updatedAt: now,
   });
+  if (insertDeckErr) throw insertDeckErr;
 
-  const { data: pages } = await supabase.from('pages').select('*').eq('deckId', id).order('order');
+  const { data: pages, error: pagesErr } = await supabase.from('pages').select('*').eq('deckId', id).order('order');
+  if (pagesErr) throw pagesErr;
   if (pages) {
     for (const page of pages) {
       const newPageId = uuidv4();
       const newOverlays = (page.overlays || []).map((o: any) => ({ ...o, id: uuidv4(), pageId: newPageId }));
-      await supabase.from('pages').insert({
+      const { error: insertPageErr } = await supabase.from('pages').insert({
         ...page,
         id: newPageId,
         deckId: newDeckId,
         overlays: newOverlays,
       });
+      if (insertPageErr) throw insertPageErr;
     }
   }
 
-  const { data: media } = await supabase.from('media').select('*').eq('deckId', id);
+  const { data: media, error: mediaErr } = await supabase.from('media').select('*').eq('deckId', id);
+  if (mediaErr) throw mediaErr;
   if (media) {
     for (const m of media) {
-      await supabase.from('media').insert({ ...m, id: uuidv4(), deckId: newDeckId });
+      const { error: insertMediaErr } = await supabase.from('media').insert({ ...m, id: uuidv4(), deckId: newDeckId });
+      if (insertMediaErr) throw insertMediaErr;
     }
   }
 
@@ -181,6 +186,10 @@ export async function uploadFile(file: File, pathPrefix: string): Promise<string
 
 let lastPageState: DeckPage | null = null;
 
+export function resetUndoState() {
+  lastPageState = null;
+}
+
 async function saveStateForUndo(pageId: string) {
   const { data } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (data) {
@@ -188,8 +197,13 @@ async function saveStateForUndo(pageId: string) {
   }
 }
 
-export async function undoLastAction() {
+export async function undoLastAction(currentDeckId?: string) {
   if (!lastPageState) return;
+  // Safeguard: Never apply an undo state across different decks
+  if (currentDeckId && lastPageState.deckId !== currentDeckId) {
+    lastPageState = null;
+    return;
+  }
   const state = lastPageState;
   lastPageState = null; // Can only undo once
   await supabase.from('pages').update({ 

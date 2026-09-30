@@ -174,6 +174,7 @@ export default function DeckLibrary() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DeckStatus | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const filtered = useMemo(() => {
     if (!decks) return [];
@@ -198,8 +199,16 @@ export default function DeckLibrary() {
   };
 
   const handleDuplicate = async (id: string) => {
-    const newId = await duplicateDeck(id);
-    navigate(`/editor/${newId}`);
+    if (isDuplicating) return;
+    try {
+      setIsDuplicating(true);
+      const newId = await duplicateDeck(id);
+      navigate(`/editor/${newId}`);
+    } catch (err: any) {
+      console.error('Failed to duplicate deck:', err);
+      alert('Failed to duplicate deck: ' + (err.message || 'Unknown error'));
+      setIsDuplicating(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -318,6 +327,13 @@ export default function DeckLibrary() {
           </div>
         )}
       </main>
+
+      {isDuplicating && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+          <div className="w-8 h-8 border-2 border-[#333] border-t-accent rounded-full animate-spin"></div>
+          <p className="text-sm font-semibold text-text-primary">Duplicating deck & creating isolated slides...</p>
+        </div>
+      )}
 
       {showNewModal && (
         <NewDeckModal onClose={() => setShowNewModal(false)} onCreate={handleNew} />

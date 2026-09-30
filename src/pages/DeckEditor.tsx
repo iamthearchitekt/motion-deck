@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Globe, Link2, Save, Settings, Check, ChevronDown, Upload, X } from 'lucide-react';
-import { useDeck, usePages, updateDeck, setDeckStatus, setTransition, undoLastAction } from '../db/hooks';
+import { useDeck, usePages, updateDeck, setDeckStatus, setTransition, undoLastAction, resetUndoState } from '../db/hooks';
 import PageSidebar from '../components/PageSidebar';
 import PageCanvas from '../components/PageCanvas';
 import OverlaySettingsPanel from '../components/OverlaySettingsPanel';
@@ -46,22 +46,44 @@ export default function DeckEditor() {
         const target = e.target as HTMLElement;
         if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
           e.preventDefault();
-          undoLastAction();
+          undoLastAction(deckId);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [deckId]);
 
-  // Auto-select first page when pages load
+  // Reset selections and undo cache when switching between decks
   useEffect(() => {
-    if (pages && pages.length > 0 && !selectedPageId) {
+    setSelectedPageId(null);
+    setSelectedOverlayId(null);
+    resetUndoState();
+  }, [deckId]);
+
+  // Keep selectedPageId strictly pointing to a page in the current deck
+  useEffect(() => {
+    if (!pages || pages.length === 0) {
+      setSelectedPageId(null);
+      return;
+    }
+    if (!selectedPageId || !pages.some((p: DeckPage) => p.id === selectedPageId)) {
       setSelectedPageId(pages[0].id);
+      setSelectedOverlayId(null);
     }
   }, [pages, selectedPageId]);
 
   const selectedPage = pages?.find((p: DeckPage) => p.id === selectedPageId) || null;
+
+  // Ensure selectedOverlayId belongs to currently selected page
+  useEffect(() => {
+    if (selectedOverlayId && selectedPage) {
+      const exists = selectedPage.overlays?.some(o => o.id === selectedOverlayId);
+      if (!exists) {
+        setSelectedOverlayId(null);
+      }
+    }
+  }, [selectedPage, selectedOverlayId]);
 
   // Autosave indicator - triggered by any DB change via live query
   const triggerSave = useCallback(() => {
