@@ -18,12 +18,13 @@ export default async (request: Request, context: Context) => {
   const supabaseUrl = Deno.env.get("VITE_SUPABASE_URL") || Netlify.env.get("VITE_SUPABASE_URL");
   const supabaseKey = Deno.env.get("VITE_SUPABASE_ANON_KEY") || Netlify.env.get("VITE_SUPABASE_ANON_KEY");
 
-  let imageUrl = null;
+  let imageUrl: string | null = null;
+  let deckTitle: string | null = null;
 
   if (supabaseUrl && supabaseKey) {
     try {
-      // 1. Fetch deck by slug to get deck ID
-      const deckRes = await fetch(`${supabaseUrl}/rest/v1/decks?slug=eq.${slug}&select=id`, {
+      // 1. Fetch deck by slug to get deck ID and title
+      const deckRes = await fetch(`${supabaseUrl}/rest/v1/decks?slug=eq.${slug}&select=id,title`, {
         headers: {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`
@@ -33,6 +34,9 @@ export default async (request: Request, context: Context) => {
       
       if (decks && decks.length > 0) {
         const deckId = decks[0].id;
+        if (decks[0].title) {
+          deckTitle = decks[0].title;
+        }
         
         // 2. Fetch first page of deck to get imageUrl
         const pagesRes = await fetch(`${supabaseUrl}/rest/v1/pages?deckId=eq.${deckId}&order=order.asc&limit=1&select=imageUrl,imageDataUrl`, {
@@ -56,7 +60,8 @@ export default async (request: Request, context: Context) => {
   // Get the original response (the index.html)
   const response = await context.next();
   
-  if (!imageUrl || imageUrl.startsWith('data:')) {
+  const hasValidImage = imageUrl && !imageUrl.startsWith('data:');
+  if (!hasValidImage && !deckTitle) {
     return response;
   }
 
@@ -67,11 +72,20 @@ export default async (request: Request, context: Context) => {
   }
 
   const text = await response.text();
+  let modifiedText = text;
   
-  // Replace the default og:image tags with the specific deck's image
-  const modifiedText = text
-    .replace(/<meta property="og:image" content="[^"]*" \/>/g, `<meta property="og:image" content="${imageUrl}" />`)
-    .replace(/<meta name="twitter:image" content="[^"]*" \/>/g, `<meta name="twitter:image" content="${imageUrl}" />`);
+  if (hasValidImage) {
+    modifiedText = modifiedText
+      .replace(/<meta property="og:image" content="[^"]*" \/>/g, `<meta property="og:image" content="${imageUrl}" />`)
+      .replace(/<meta name="twitter:image" content="[^"]*" \/>/g, `<meta name="twitter:image" content="${imageUrl}" />`);
+  }
+
+  if (deckTitle) {
+    modifiedText = modifiedText
+      .replace(/<title>[^<]*<\/title>/g, `<title>${deckTitle}</title>`)
+      .replace(/<meta property="og:title" content="[^"]*" \/>/g, `<meta property="og:title" content="${deckTitle}" />`)
+      .replace(/<meta name="twitter:title" content="[^"]*" \/>/g, `<meta name="twitter:title" content="${deckTitle}" />`);
+  }
 
   return new Response(modifiedText, {
     status: response.status,
