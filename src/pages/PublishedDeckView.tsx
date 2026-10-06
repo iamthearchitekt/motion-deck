@@ -411,14 +411,30 @@ export default function PublishedDeckView() {
   // Resolve slug → deckId
   useEffect(() => {
     if (!slug) { setNotFound(true); return; }
-    supabase.from('decks').select('id').eq('slug', slug).single().then(({ data: deck }) => {
-      if (deck) setDeckId(deck.id);
-      else setNotFound(true);
+    supabase.from('decks').select('id, title').eq('slug', slug).single().then(({ data: deck }) => {
+      if (deck) {
+        setDeckId(deck.id);
+        if (deck.title) {
+          document.title = deck.title;
+        }
+      } else {
+        setNotFound(true);
+      }
     });
   }, [slug]);
 
   const deck = useDeck(deckId || undefined);
   const pages = usePages(deckId || undefined);
+
+  // Set browser tab title to deck name
+  useEffect(() => {
+    if (deck?.title) {
+      document.title = deck.title;
+    }
+    return () => {
+      document.title = 'Motion Deck';
+    };
+  }, [deck?.title]);
 
   const scrollToPage = useCallback((index: number) => {
     setCurrentIndex(index);
